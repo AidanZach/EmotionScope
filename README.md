@@ -4,6 +4,10 @@
 
 Replicates and extends Anthropic's April 2026 paper ["Emotion Concepts and their Function in a Large Language Model"](https://transformer-circuits.pub/2026/emotions/index.html) on open-weight models that anyone can download and run.
 
+<p align="center">
+  <img src="results/figures/test_gallery_screenshot.png" alt="EmotionScope test gallery — animated orbs visualizing emotion vectors across validation scenarios" width="720" />
+</p>
+
 ---
 
 ## What this is
@@ -41,6 +45,18 @@ Emotion vectors extracted at **layer 22 (84.6% depth)** with 1,000 LLM-generated
 
 **Data:** 1,000 LLM-generated templates (20 emotions x 50), 100 neutral prompts for PCA denoising, 1,240 two-speaker dialogues covering all 380 emotion pairs.
 
+<p align="center">
+  <img src="results/figures/tylenol_intensity.png" alt="Tylenol intensity test — afraid score scales monotonically with dosage danger (rho=1.000)" width="720" />
+</p>
+
+<p align="center">
+  <img src="results/figures/confusion_matrix.png" alt="Implicit scenario confusion matrix — 100% top-3 recall across 12 scenarios" width="720" />
+</p>
+
+<p align="center">
+  <img src="results/figures/similarity_matrix.png" alt="Pairwise cosine similarity matrix — 20 emotion vectors sorted by valence" width="480" />
+</p>
+
 ---
 
 ## Methodology Notes
@@ -50,6 +66,14 @@ The extraction pipeline uses a **true pooled grand mean** across all activations
 Valence/arousal metadata is from Russell (1980) circumplex model, cross-referenced with the NRC Emotion Intensity Lexicon (Mohammad, 2018). These coordinates are used only for visualization and validation metrics — the emotion vectors themselves are derived purely from neural activations, not from these metadata values.
 
 See [Documentation/MATHS.md](Documentation/MATHS.md) for the full cross-verification against Anthropic's published methodology.
+
+<p align="center">
+  <img src="results/figures/layer_sweep.png" alt="Probe layer sweep — valence separation improves monotonically, optimal at layer 21 (81% depth)" width="600" />
+</p>
+
+<p align="center">
+  <img src="results/figures/circumplex_pca.png" alt="PCA projection of 20 emotion vectors — circumplex structure emerges from neural activations" width="480" />
+</p>
 
 ---
 
@@ -202,6 +226,10 @@ We extract separate "current-speaker" and "other-speaker" emotion vectors from 1
 - **Behavioral accuracy: poor.** Other-speaker vectors consistently read "loving/happy" regardless of input emotion — they capture the model's empathetic response preparation, not a genuine read of the user's state
 - **Thermostat: absent.** Arousal delta = +0.107 (model mirrors, doesn't counter-regulate)
 
+<p align="center">
+  <img src="results/figures/speaker_orthogonality.png" alt="Speaker separation — cosine similarity between current-speaker and other-speaker vectors per emotion" width="600" />
+</p>
+
 Phase 1 (single-speaker) vectors remain the primary vectors for the demo. When speaker separation vectors are loaded, the frontend offers an experimental toggle to compare modes.
 
 ---
@@ -238,6 +266,10 @@ We want to be transparent about what these numbers mean and where the methodolog
 **The vector geometry is real.** Valence separation (-0.722) and emotion richness (-0.051) are computed directly from the extracted vectors — no validation prompts, no labeling decisions, no judgment calls. Either positive-valence vectors point away from negative-valence vectors in 2304-dimensional space, or they don't. These metrics are deterministic given the same model weights and templates.
 
 **The extraction/probing position distinction is methodologically sound.** Averaging over content tokens during extraction (clean directions) and probing at the response-preparation token (compressed assessment) follows logically from how transformers process information, and the 83% vs 75% comparison was a controlled experiment. This independently validates Anthropic's choice to measure at the token preceding the assistant's response.
+
+<p align="center">
+  <img src="results/figures/probe_position_sweep.png" alt="Emotion signal across token positions — content tokens carry raw signal, response-prep token carries compressed assessment" width="720" />
+</p>
 
 ### What we're skeptical of
 
