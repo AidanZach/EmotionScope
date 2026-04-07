@@ -52,6 +52,9 @@ export default function TestGallery() {
             return (
               <div key={r.index} className="test-card">
                 <div className="test-card-label">{r.label}</div>
+                {r.prompt && (
+                  <div className="test-card-prompt">"{r.prompt}"</div>
+                )}
                 <EmotionOrbCanvas emotionState={e} size={140} />
                 <div className="test-card-dominant">{e.dominant}</div>
                 <div className="test-card-metrics">

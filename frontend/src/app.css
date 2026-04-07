@@ -168,6 +168,19 @@ body {
   color: var(--text-dim);
 }
 
+.test-card-prompt {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+  max-width: 180px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  margin: 2px 0 4px;
+}
+
 .test-card-dominant {
   font-size: 13px;
   color: var(--text-primary);

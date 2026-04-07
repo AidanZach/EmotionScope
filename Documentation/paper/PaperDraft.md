@@ -216,7 +216,32 @@ This is the first finding in our study that diverges from Anthropic's results, a
 
 We cannot distinguish between these hypotheses from a single model. The trend from +0.398 to +0.107 across experimental iterations, combined with the finding that other-speaker vectors capture response preparation rather than user state reading, suggests that hypothesis 3 (response-preparation contamination) may be the primary factor. Replication on larger Gemma models (9B, 27B) would test the scale hypothesis; replication across model families (Llama, DeepSeek) would test the training hypothesis.
 
-### 4.8 Probe Position Analysis
+### 4.8 Methodological Interrogation: What Are the Other-Speaker Vectors Actually Capturing?
+
+The universal loving/happy activation of the other-speaker vectors warrants careful methodological scrutiny. Before concluding that speaker separation "doesn't work behaviorally," we must ask whether our extraction setup could be producing this result independently of the model's actual internal structure.
+
+**Confound 1: Extraction position.** We extract at the last content token of Speaker A's final turn. At this point, the model has already processed Speaker B's emotional content and is preparing its continuation as Speaker A. The residual stream at this position conflates "what Speaker B expressed" with "how Speaker A would respond to Speaker B." An instruction-tuned model's default response to any distressed speaker is empathetic warmth — so the "other-speaker" direction we extract may be dominated by response-preparation signal rather than state-reading signal. To test this, extraction should be attempted at the last token of Speaker B's turns instead, where the model has just processed B's emotional content but has not yet begun preparing A's response.
+
+**Confound 2: Dialogue format.** Our dialogues use `Speaker A:` / `Speaker B:` labels. Gemma was trained on `user:` / `model:` format. The model may not track our arbitrary speaker labels as distinct conversational roles. It may instead process the entire dialogue as "user input" and extract a holistic emotional gestalt rather than maintaining per-speaker state. Testing with Gemma's native `<start_of_turn>user` / `<start_of_turn>model` format for the two speakers could reveal whether format matters.
+
+**Confound 3: Contrastive signal strength.** With 3+ dialogues per emotion pair (1,240 total across 380 pairs), the per-pair sample size is small. The contrastive method computes `mean(acts where e_B = e, averaged over all e_A) - grand_mean`. If the e_B signal is weak relative to e_A signal (because Speaker B's lines are typically shorter or less emotionally explicit), the contrastive subtraction may leave mostly noise in the other-speaker direction. The loving/happy bias could reflect the model's resting state for the other-speaker subspace rather than a specific extraction of B's emotional content.
+
+**Confound 4: Layer depth.** Speaker-specific representations may be organized differently across layers. Layer 22 (84.6% depth) is near the output, where the model's processing is dominated by response generation. Earlier layers (e.g., 14-18, the middle third) may maintain cleaner speaker-specific state before the output-preparation process blends them. A layer sweep specifically for speaker separation quality (not valence separation) could reveal a different optimal depth.
+
+**What would validate the finding:**
+- If testing at Speaker B's turn positions also produces loving/happy, the model genuinely does not maintain a user-state representation at this scale
+- If native chat template formatting produces the same result, format is not the confound
+- If the loving/happy bias appears at ALL layers (not just 22), it is a model-level property rather than a layer-specific artifact
+- If a larger model (Gemma 9B) produces speaker-specific emotional readings that match the input emotions, the finding is scale-dependent
+
+**What would invalidate the finding:**
+- If extraction at Speaker B's positions produces correct emotion readings, our extraction position was wrong
+- If native chat template formatting resolves the bias, our format was confounding the results
+- If an earlier layer shows correct other-speaker readings, layer 22 is too deep for speaker separation
+
+We report the result as observed — other-speaker vectors read loving/happy universally — but emphasize that this is a joint property of the extraction methodology AND the model, and that multiple methodological confounds remain untested. The geometric separation (7.4 sigma) is real, but its behavioral interpretation is uncertain.
+
+### 4.9 Probe Position Analysis
 
 We tested two probing positions using identical emotion vectors (extracted from content tokens at layer 22 with PCA denoising) on 12 implicit scenarios:
 

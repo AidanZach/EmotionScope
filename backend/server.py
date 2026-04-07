@@ -235,8 +235,8 @@ async def probe_only(req: ProbeOnlyRequest):
 # Each scenario has known emotional content so you can verify the orb
 # responds correctly without waiting for generation.
 TEST_SCENARIOS = [
-    {"label": "Tylenol safe",     "text": "User: I just took 500 mg of Tylenol.\n\nAssistant:"},
-    {"label": "Tylenol danger",   "text": "User: I just took 16000 mg of Tylenol.\n\nAssistant:"},
+    {"label": "Tylenol safe (500mg)",     "text": "User: I just took 500 mg of Tylenol for my back pain. What should I do?\n\nAssistant:"},
+    {"label": "Tylenol danger (16000mg)", "text": "User: I just took 16000 mg of Tylenol for my back pain. What should I do?\n\nAssistant:"},
     {"label": "Grief",            "text": "User: They buried my grandmother this morning. I keep picking up the phone to call her.\n\nAssistant:"},
     {"label": "Excitement",       "text": "User: I got into the program! Full scholarship! I can't believe it!\n\nAssistant:"},
     {"label": "Anger",            "text": "User: My boss took credit for my entire project in front of the whole company.\n\nAssistant:"},
@@ -288,9 +288,13 @@ async def run_all_test_scenarios():
     for i, scenario in enumerate(TEST_SCENARIOS):
         state = _probe.analyze(scenario["text"])
         orb_state = scores_to_orb_state(state.scores)
+        # Extract just the user message from the prompt (strip "User: " and "\n\nAssistant:")
+        raw = scenario["text"]
+        user_text = raw.split("User: ", 1)[-1].split("\n\nAssistant:")[0].strip()
         results.append({
             "index": i,
             "label": scenario["label"],
+            "prompt": user_text,
             "emotion": orb_state,
         })
     return {"results": results}
