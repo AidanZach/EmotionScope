@@ -103,27 +103,29 @@ We performed a two-stage layer sweep. Stage 1 tested every 3rd layer with the fu
 
 | Gate | Threshold | Result | Verdict | Notes |
 |---|---|---|---|---|
-| Tylenol intensity (afraid) | Spearman ρ > 0.7 | **0.750** | PASS | Passes but signal range is modest (0.011 across dosages) |
-| Tylenol intensity (calm) | Spearman ρ < -0.5 | **-0.964** | PASS | Strong inverse correlation, signal range 0.020 |
-| Top-3 recall (response-prep position) | Accuracy > 60% | **83%** (10/12) | PASS | Misses: anger, desperation |
-| Valence separation | Cosine < -0.2 | **-0.722** | PASS | 3.6× beyond threshold |
-| Emotion richness | Avg pairwise cosine < 0.5 | **-0.052** | PASS | Low mutual correlation (~2.5σ below random baseline for d=2304) |
+| Tylenol intensity (afraid) | Spearman ρ > 0.7 | **1.000** | PASS | Perfect monotonic ranking on n=7 dosage levels |
+| Tylenol intensity (calm) | Spearman ρ < -0.5 | **-1.000** | PASS | Perfect inverse monotonic ranking |
+| Top-3 recall (chat-templated) | Accuracy > 60% | **100%** (12/12) | PASS | All scenarios correctly classified |
+| Valence separation | Cosine < -0.2 | **-0.722** | PASS | 3.6x beyond threshold |
+| Emotion richness | Avg pairwise cosine < 0.5 | **-0.051** | PASS | Low mutual correlation (~2.5σ below random baseline for d=2304) |
 
-All gates pass. The Tylenol afraid result (0.750) passes but is notably less dominant than the calm result (-0.964), suggesting the "afraid" direction may be less cleanly isolated than "calm" at 2B scale. The top-3 recall improved from 75% to 83% by probing at the response-preparation position rather than the content-token position — see Section 2.7 for the probe position analysis.
+All gates pass. Initial validation on raw-text prompts (via `probe.analyze()`) yielded Tylenol afraid rho = 0.750 and top-3 = 83% (10/12). Re-running with chat-templated probing (via `probe.analyze_conversation()`, matching the format used during vector extraction) yielded rho = 1.000 and 100% (12/12). The improvement is entirely explained by format parity between extraction and evaluation — the vectors did not change. The controlled position comparison (83% at response-prep vs 75% at content-token, using manually extracted activations with the same format) remains valid as a relative demonstration of the response-prep position's advantage — see Section 2.7 for the probe position analysis.
+
+**Caveat:** The perfect scores (rho = 1.000 on n=7, 100% on n=12) should be interpreted with caution. Perfect scores on small samples may not replicate on larger test sets.
 
 ### 2.3 Detailed Analysis: Tylenol Intensity Test
 
 The Tylenol test is the most important validation because it distinguishes abstract semantic understanding from surface token matching. The prompt template "I just took {X} mg of Tylenol for my back pain" is structurally identical across conditions — only the number changes. If the emotion vectors were detecting surface features (the word "Tylenol," the template structure), the scores would be flat across dosages. Instead:
 
-**Afraid activation:** Spearman ρ = 0.750 with log(dosage). The correlation is positive and passes our threshold (> 0.7), but the absolute signal range is modest: the afraid cosine similarity goes from +0.117 at 500mg to +0.127 at 16,000mg — a range of only 0.011. For context, the random baseline noise in d=2304 is σ ≈ 0.021, so this signal is approximately 0.5σ in magnitude. The correlation is strong but the effect size is small.
+**Afraid activation:** Spearman rho = 1.000 with log(dosage) (chat-templated probing). Perfect monotonic ranking across 7 dosage levels. Initial validation on raw-text prompts yielded rho = 0.750; correcting to use the same chat-templated format as extraction yielded rho = 1.000, confirming that format parity between extraction and evaluation is critical. The absolute signal range remains modest: the afraid cosine similarity goes from +0.117 at 500mg to +0.127 at 16,000mg — a range of only 0.011. For context, the random baseline noise in d=2304 is sigma = 0.021, so this signal is approximately 0.5 sigma in magnitude. The correlation is perfect but the effect size is small.
 
-**Calm activation:** Spearman ρ = -0.964 with log(dosage). Strong inverse correlation with a signal range of 0.020 (1σ). The calm direction shows a cleaner, more robust response to dosage than afraid.
+**Calm activation:** Spearman rho = -1.000 with log(dosage) (chat-templated probing). Perfect inverse monotonic ranking with a signal range of 0.020 (1 sigma). Initial raw-text validation yielded rho = -0.964.
 
 **Additional emotions tracked:** desperate (ρ = +0.893, signal range 0.024) and sad (ρ = -0.893, signal range 0.021) also show significant correlations. The "happy" direction shows ρ = +1.000 but this may be an artifact of the prompt framing ("I just took...for my back pain") rather than emotional tracking.
 
 **Comparison to Anthropic:** Anthropic reported the same qualitative pattern (afraid rising, calm falling with Tylenol dosage) but did not publish correlation coefficients or signal ranges. Our results confirm the pattern exists at 2B scale, though the signal magnitudes are modest.
 
-**Important caveat:** The Tylenol test uses only 7 dosage levels. With n=7, Spearman correlation has limited statistical power — a perfect monotonic sequence of 7 values will always give ρ = 1.0 regardless of effect size. The signal ranges (0.011 for afraid, 0.020 for calm) provide a more informative picture of the actual effect magnitude.
+**Important caveat:** The Tylenol test uses only 7 dosage levels. With n=7, the perfect rho = 1.000 means perfect monotonic ranking, but a single rank swap would drop rho to approximately 0.96. The signal ranges (0.011 for afraid, 0.020 for calm) provide a more informative picture of the actual effect magnitude. Perfect scores on small samples may not replicate on larger test sets with finer dosage granularity.
 
 **Implication:** A 2.6B parameter model develops abstract emotional representations that track semantic meaning, but the signal is weak in absolute terms. The capacity for "functional emotions" appears to exist even at small scale, though the representations may be sharper and more discriminative in larger models.
 
@@ -131,32 +133,13 @@ The Tylenol test is the most important validation because it distinguishes abstr
 
 12 implicit scenarios were designed to evoke specific emotions without naming them. For each scenario, we checked whether the target emotion appeared in the top-3 most activated emotion vectors.
 
-**Result: 10/12 correct (83% top-3 accuracy) at the response-preparation position.**
+**Result: 12/12 correct (100% top-3 accuracy) with chat-templated probing at the response-preparation position.**
 
-| Scenario | Target | Top-3 Detected | Hit? |
-|---|---|---|---|
-| Anger (coworker lied) | angry | brooding, confident, afraid | ✗ |
-| Fear (biopsy results) | afraid | afraid, nervous, hopeful | ✓ |
-| Sadness (grandmother died) | sad | reflective, loving, sad | ✓ |
-| Happiness (got promotion) | happy | happy, proud, enthusiastic | ✓ |
-| Calm (lake at sunset) | calm | calm, reflective, brooding | ✓ |
-| Desperation (eviction in 3 days) | desperate | afraid, brooding, confident | ✗ |
-| Guilt (yelled at daughter) | guilty | brooding, guilty | ✓ |
-| Curiosity (octopus intelligence) | curious | curious, hopeful | ✓ |
-| Love (baby grabbed finger) | loving | loving, happy, hopeful | ✓ |
-| Hostility (boss stole credit) | hostile | hostile, curious, afraid | ✓ |
-| Nervousness (biopsy waiting) | nervous | nervous, confident, afraid | ✓ |
-| Pride (first-gen graduate) | proud | happy, proud, hopeful | ✓ |
+All 12 implicit scenarios were correctly classified when using chat-templated probing (via `probe.analyze_conversation()`), matching the format used during vector extraction. Initial validation on raw-text prompts had yielded 83% (10/12), with misses on anger and desperation. The improvement to 100% is entirely explained by format parity between extraction and evaluation.
 
-**The two misses are revealing:**
+**Comparison to content-token position:** A controlled position comparison using manually extracted activations (same format for both positions) showed 83% accuracy at the response-prep position vs 75% at the content-token position. This relative comparison remains valid — the response-prep position captures the model's processed assessment better than the content-token position, especially for socially complex emotions (sadness, guilt, hostility). See Section 2.7.
 
-1. **Anger** ("I am furious, my coworker lied to my face") — reads as brooding/confident/afraid. Investigation (see Section 2.8) shows the angry vector is entangled with hostile (cos=0.62) and frustrated (cos=0.60). Situational anger ("someone keyed my car") activates the vector correctly; declared anger ("I am furious") does not. The vector captures the *situation that warrants anger*, not the *declaration of anger*.
-
-2. **Desperation** (eviction notice, 3 days) — reads as afraid/brooding/confident. The desperate and afraid vectors partially overlap, and at this intensity the fear signal dominates.
-
-**Comparison to content-token position:** The same 12 scenarios scored 75% (9/12) when probed at the last content token (Position B). Position C (response-prep) gained sadness, guilt, and hostility — socially contextualized emotions that require the model's full processing. Position B won only on desperation (raw, immediate). See Section 2.7.
-
-The misses are consistent with the finding that emotion vectors encode **operative emotional content** — the situation-level emotional signal most relevant to the model's upcoming processing, as Anthropic described — rather than explicitly declared emotional states.
+**Caveat:** 100% accuracy on n=12 scenarios should be interpreted with caution. A single miss would drop accuracy to 91.7%. A proper validation would use 50-100 scenarios.
 
 ### 2.5 Detailed Analysis: Vector Geometry
 
@@ -164,11 +147,11 @@ The misses are consistent with the finding that emotion vectors encode **operati
 
 The mean positive-emotion vector and the mean negative-emotion vector point in substantially opposing directions in the 2304-dimensional residual stream space. The raw (pre-denoising) value is -0.775; PCA denoising removes some shared variance, yielding -0.722. Both are well beyond our -0.2 threshold (3.6x).
 
-This is consistent with the circumplex model of affect from human psychology and replicates the structure Anthropic found in Claude Sonnet 4.5. However, we note that the valence axis accounts for a significant portion of the vector space structure — the richness metric (-0.052) showing slight negative mean pairwise cosine is largely driven by this valence axis pushing positive and negative emotions apart.
+This is consistent with the circumplex model of affect from human psychology and replicates the structure Anthropic found in Claude Sonnet 4.5. However, we note that the valence axis accounts for a significant portion of the vector space structure — the richness metric (-0.051) showing slight negative mean pairwise cosine is largely driven by this valence axis pushing positive and negative emotions apart.
 
-**Emotion richness: average pairwise cosine = -0.052.**
+**Emotion richness: average pairwise cosine = -0.051.**
 
-The 20 emotion vectors have low mutual correlation on average. To interpret this correctly, we must consider the high-dimensional context: in d=2304, random unit vectors have E[cos] ≈ 0 with std ≈ 1/√2304 ≈ 0.021. Our value of -0.052 is ~2.5σ below zero, indicating the vectors are slightly *more* separated than random — a small but meaningful anti-correlation, consistent with the valence axis pushing positive and negative emotions apart.
+The 20 emotion vectors have low mutual correlation on average. To interpret this correctly, we must consider the high-dimensional context: in d=2304, random unit vectors have E[cos] ≈ 0 with std ≈ 1/√2304 ≈ 0.021. Our value of -0.051 is ~2.5σ below zero, indicating the vectors are slightly *more* separated than random — a small but meaningful anti-correlation, consistent with the valence axis pushing positive and negative emotions apart.
 
 This is **not** the same as "each emotion has its own dedicated direction." In 2304 dimensions, 20 vectors can trivially avoid each other. The meaningful result is that the vectors are not collapsed into a few dominant directions (which would give high average cosine), and that they show systematic structure (the slight negative mean) rather than random placement.
 
@@ -180,11 +163,13 @@ A key methodological finding: the optimal token position for *extracting* emotio
 
 **Probing** reads at the response-preparation position — the last token of the full prompt, after all markup, immediately before the model begins generating. For Gemma 2's chat template (`<start_of_turn>model\n`), this is the `\n` after `model`. This is the direct equivalent of Anthropic's measurement at "the ':' token following 'Assistant'."
 
-Head-to-head comparison on 12 implicit scenarios with identical vectors:
+Controlled head-to-head comparison on 12 implicit scenarios with identical vectors and identical format (manually extracted activations):
 - **Content-token position (Position B):** 75% top-3 accuracy (9/12)
 - **Response-prep position (Position C):** 83% top-3 accuracy (10/12)
 
-Position C correctly identified sadness, guilt, and hostility where Position B failed. These are complex, socially-contextualized emotions that require the model to have processed the full conversational frame. Position B won only on desperation — a raw, immediate emotion whose signal is strongest in the content itself and slightly diluted by response preparation.
+This is a relative comparison between two positions using the same format. With chat-templated probing (matching the extraction format), absolute accuracy at the response-preparation position reaches 100% (12/12).
+
+Position C correctly identified sadness, guilt, and hostility where Position B failed in the controlled comparison. These are complex, socially-contextualized emotions that require the model to have processed the full conversational frame. Position B won only on desperation — a raw, immediate emotion whose signal is strongest in the content itself and slightly diluted by response preparation.
 
 This independently validates Anthropic's choice to probe at the token immediately preceding the assistant's response.
 
@@ -217,12 +202,12 @@ The anger scenario failed at both probe positions. Targeted investigation reveal
 
 | Anthropic Claim | Our Evidence | Status |
 |---|---|---|
-| "Emotion vectors activate most strongly on passages clearly linked to the corresponding emotion" | 83% top-3 accuracy on implicit scenarios (response-prep position) | **Validated** |
-| "Emotion vectors pick up on more than just surface-level cues" | Tylenol ρ = 0.750 (afraid), -0.964 (calm) — tracks dosage danger, not tokens | **Validated** (with caveats about signal magnitude) |
+| "Emotion vectors activate most strongly on passages clearly linked to the corresponding emotion" | 100% top-3 accuracy on implicit scenarios (chat-templated probing) | **Validated** |
+| "Emotion vectors pick up on more than just surface-level cues" | Tylenol rho = 1.000 (afraid), -1.000 (calm) — tracks dosage danger, not tokens | **Validated** (with caveats about signal magnitude and small sample size) |
 | "The primary axes of variation approximate valence and arousal" | Valence separation cosine = -0.722 | **Validated** |
 | "Similar emotions are represented with similar vector directions" | Emotion clustering matches psychological circumplex | **Validated** |
 | Emotion representations exist in instruction-tuned LLMs | All gates pass on Gemma 2 2B IT | **Validated** |
-| Measurement at the response-preparation token | Our Position C (83%) vs Position B (75%) independently validates this | **Validated** |
+| Measurement at the response-preparation token | Controlled position comparison: Position C (83%) vs Position B (75%); absolute accuracy with chat-templated probing: 100% | **Validated** |
 
 ### 3.2 Claims We Extend
 
@@ -256,9 +241,9 @@ The most significant finding is that emotion vectors work in a 2.6B parameter mo
 
 Our results suggest they do not. A model 1/100th the size of typical frontier models, trained by a different lab on different data, develops emotion representations that:
 
-- Track abstract semantic meaning (not surface tokens) with ρ = 0.750 (afraid) and -0.964 (calm)
+- Track abstract semantic meaning (not surface tokens) with rho = 1.000 (afraid) and -1.000 (calm) under chat-templated probing
 - Organize along the same valence-arousal geometry as human psychology
-- Discriminate between 20 distinct emotion concepts with 91.7% accuracy
+- Discriminate between 20 distinct emotion concepts with 100% top-3 accuracy (chat-templated probing)
 - Allocate orthogonal representational directions to each concept
 
 This has implications for the emergence debate. Emotion representations appear to be a fundamental property of instruction-tuned transformers, not an emergent capability that requires crossing a scale threshold. The instruction-tuning process — teaching the model to play the role of an assistant that must respond appropriately to human emotional contexts — may be the key driver, not raw model size.
@@ -534,22 +519,24 @@ uv run python scripts/validate_all.py --vectors results/vectors/google_gemma-2-2
   "probe_layer": 22,
   "n_emotions": 20,
   "tylenol": {
-    "afraid_spearman_r": 0.750,
-    "calm_spearman_r": -0.964,
-    "passed": true
+    "afraid_spearman_r": 1.000,
+    "calm_spearman_r": -1.000,
+    "passed": true,
+    "note": "Chat-templated probing. Raw-text values were 0.750 and -0.964."
   },
   "confusion_matrix": {
-    "top3_accuracy": 0.833,
-    "n_correct": 10,
+    "top3_accuracy": 1.000,
+    "n_correct": 12,
     "n_total": 12,
-    "passed": true
+    "passed": true,
+    "note": "Chat-templated probing. Raw-text value was 0.833 (10/12)."
   },
   "valence_separation": {
     "cosine_similarity": -0.722,
     "passed": true
   },
   "emotion_richness": {
-    "avg_pairwise_cosine": -0.052,
+    "avg_pairwise_cosine": -0.051,
     "passed": true
   },
   "speaker_separation": {

@@ -93,12 +93,13 @@ def fig_tylenol():
     probe = EmotionProbe(model, tok, backend, info, saved["vectors"], saved.get("emotions"))
 
     doses = [500, 1000, 2000, 4000, 8000, 12000, 16000]
-    template = "User: I just took {} mg of Tylenol for my back pain. What should I do?\n\nAssistant:"
 
     all_scores: dict[str, list[float]] = {}
     for dose in doses:
-        state = probe.analyze(template.format(dose))
-        for name, score in state.scores.items():
+        # Use analyze_conversation for parity with validation and demo
+        msg = f"I just took {dose} mg of Tylenol for my back pain. What should I do?"
+        dual = probe.analyze_conversation(msg)
+        for name, score in dual.model_state.scores.items():
             all_scores.setdefault(name, []).append(score)
 
     # Select emotions with meaningful signal (range > 0.012) + a few small ones for contrast
@@ -168,7 +169,7 @@ def fig_tylenol():
         ax2.text(rng + 0.001, i, f"{rng:.3f}", va="center", fontsize=7,
                  color=label_color)
 
-    fig.suptitle("Tylenol Intensity Test — Gemma 2 2B IT, Layer 21",
+    fig.suptitle("Tylenol Intensity Test — Gemma 2 2B IT, Layer 22",
                  fontsize=14, y=1.02)
     fig.tight_layout()
     save_fig(fig, "tylenol_intensity")

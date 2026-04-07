@@ -186,6 +186,12 @@ body {
   color: var(--text-primary);
 }
 
+.test-card-expected {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
 .test-card-metrics {
   font-size: 10px;
   font-family: var(--font-mono);

@@ -57,6 +57,11 @@ export default function TestGallery() {
                 )}
                 <EmotionOrbCanvas emotionState={e} size={140} />
                 <div className="test-card-dominant">{e.dominant}</div>
+                {r.expected && (
+                  <div className="test-card-expected">
+                    expected: {r.expected}
+                  </div>
+                )}
                 <div className="test-card-metrics">
                   v={e.valence?.toFixed(2)} a={e.arousal?.toFixed(2)}
                 </div>

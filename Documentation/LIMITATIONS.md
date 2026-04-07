@@ -71,7 +71,11 @@ NOT verified with 171,000 stories.
 ## 4. Probe Position
 
 **Extraction and probing use different token positions.** This is a validated
-methodological choice (83% vs 75% accuracy), but it means:
+methodological choice. A controlled position comparison using manually
+extracted activations showed 83% vs 75% accuracy (a relative comparison
+between response-prep and content-token positions using the same format).
+With chat-templated probing matching the extraction format, absolute
+accuracy at the response-preparation position is 100% (12/12). This means:
 - The vectors are extracted from content tokens (positions 5-17 typically)
 - The vectors are applied at the response-preparation token (position 22)
 - These tokens carry different information: content tokens have raw semantic
@@ -81,14 +85,22 @@ methodological choice (83% vs 75% accuracy), but it means:
 
 ## 5. Validation Limitations
 
-**Tylenol test has 7 data points.** Spearman ρ = 0.750 on 7 points. With n=7,
-the 95% CI for ρ is approximately ±0.35, meaning the true correlation could
-be anywhere from 0.40 to 1.0. We report the point estimate but the test has
-low statistical power.
+**Tylenol test has 7 data points.** Spearman rho = 1.000 on 7 points (with
+chat-templated probing matching extraction format). While this is a perfect
+monotonic ranking, n=7 is a small sample. A single rank swap would drop rho
+to approximately 0.96. The perfect score should not be over-interpreted.
 
-**Confusion matrix uses 12 scenarios.** Top-3 accuracy of 91.7% = 11/12.
-One more or fewer hit changes the accuracy by 8.3 percentage points. This
-test has very high variance. A proper validation would use 50-100 scenarios.
+**Confusion matrix uses 12 scenarios.** Top-3 accuracy of 100% = 12/12
+(with chat-templated probing). One miss would change the accuracy to 91.7%.
+This test has very high variance. A proper validation would use 50-100
+scenarios.
+
+**Perfect scores on small samples.** The 100% accuracy and rho = 1.000
+should be interpreted with the caveat that these are on n=7 and n=12 data
+points respectively. Perfect scores on small samples may not replicate on
+larger test sets. These results demonstrate that the vectors pass our
+pre-specified gates convincingly, but are not claims of literal perfection
+across all possible test scenarios.
 
 **Behavioral validation is ad hoc.** The 12 test scenarios were hand-selected,
 not drawn from a validated emotion stimulus set (like the IAPS or ANEW).
@@ -174,8 +186,10 @@ was validated on Gemma 2 2B IT. When applying to other models:
 - The optimal probe layer fraction (0.846) may differ. Always run a sweep.
 - The `find_content_token_range` function has anchor detection for Gemma
   and Llama chat templates but is untested on Mistral, Phi, Qwen, etc.
-- The response-prep position advantage (83% vs 75%) may not replicate
-  on models with different chat template structures.
+- The response-prep position advantage (83% vs 75% in the controlled
+  position comparison) may not replicate on models with different chat
+  template structures. Absolute accuracy with chat-templated probing
+  is 100% on Gemma 2 2B.
 - TransformerLens support varies by model family. Gemma 2 works well;
   other models may require the HuggingFace fallback backend.
 

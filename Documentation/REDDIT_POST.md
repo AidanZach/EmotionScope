@@ -10,8 +10,8 @@ Anthropic's ["Emotion Concepts and their Function in a Large Language Model"](ht
 
 **What works:**
 - 20 emotion vectors extracted from Gemma 2 2B IT at layer 22 (84.6% depth)
-- "afraid" vector tracks Tylenol overdose danger with Spearman rho=0.750 — encodes the medical danger of the number, not the word "Tylenol"
-- 83% top-3 accuracy on implicit emotion scenarios (no emotion words in the prompts)
+- "afraid" vector tracks Tylenol overdose danger with Spearman rho=1.000 (chat-templated probing matching extraction format) — encodes the medical danger of the number, not the word "Tylenol"
+- 100% top-3 accuracy on implicit emotion scenarios (no emotion words in the prompts) with chat-templated probing
 - Valence separation cosine = -0.722, consistent with Russell's circumplex model
 - 1,000 LLM-generated templates instead of Anthropic's 171,000 self-generated stories
 
@@ -22,15 +22,16 @@ Anthropic's ["Emotion Concepts and their Function in a Large Language Model"](ht
 
 **Methodological findings:**
 - Optimal probe layer is 84.6% depth, not the ~67% Anthropic reported. Monotonic improvement from early to upper-middle layers.
-- Vectors should be extracted from content tokens but probed at the response-preparation position. The model compresses its emotional assessment into the last token before generation. This independently validates Anthropic's measurement methodology. 83% accuracy at response-prep vs 75% at content token.
-- Mathematical audit caught 4 bugs in the pipeline before publication — reversed PCA threshold, incorrect grand mean, shared speaker centroids, hardcoded probe layer default. Corrected numbers are weaker but honest.
+- Vectors should be extracted from content tokens but probed at the response-preparation position. The model compresses its emotional assessment into the last token before generation. This independently validates Anthropic's measurement methodology. Controlled position comparison: 83% at response-prep vs 75% at content token. Absolute accuracy with chat-templated probing: 100%.
+- Format parity matters: initial validation on raw-text prompts yielded rho=0.750 and 83% accuracy. Correcting to chat-templated probing (matching extraction format) yielded rho=1.000 and 100%. The vectors didn't change — only the probe format.
+- Mathematical audit caught 4 bugs in the pipeline before publication — reversed PCA threshold, incorrect grand mean, shared speaker centroids, hardcoded probe layer default.
 
 **Visualization:**
 React + Three.js frontend with animated fluid orbs rendering the model's internal state during live conversation. Color = emotion (OKLCH perceptual space), size = intensity, motion = arousal, surface texture = emotional complexity. Spring physics per property.
 
 **Limitations:**
 - Single model (Gemma 2 2B IT, 2.6B params). No universality claim.
-- Tylenol afraid rho=0.750 barely passes the 0.7 threshold.
+- Perfect scores (rho=1.000 on n=7, 100% on n=12) should be interpreted with caution — small sample sizes mean these may not replicate on larger test sets.
 - LLM-generated corpus — Claude wrote the templates, not humans, not the studied model.
 - No steering experiments. Vectors correlate with emotional content but causal influence is not yet verified on this model.
 - Cosine similarity scores are 0.05-0.25. Emotion directions explain a small fraction of residual stream variance.

@@ -328,11 +328,14 @@ Anthropic's equivalent is the last token of the full prompt after all
 markup (Position C). These were tested head-to-head — see Step 8a.
 
 **Resolution:** Position C (response-preparation token) is superior for
-probing (83% vs 75% top-3 accuracy). Vectors should still be EXTRACTED
-by averaging over content tokens only (to learn clean emotion directions
-without template contamination), but PROBED at the response-preparation
-position (where the model has compressed its full emotional assessment
-for response generation). This matches Anthropic's methodology.
+probing. Controlled position comparison: 83% vs 75% top-3 accuracy
+(relative comparison using manually extracted activations with the same
+format). Absolute accuracy with chat-templated probing at Position C:
+100% (12/12). Vectors should still be EXTRACTED by averaging over
+content tokens only (to learn clean emotion directions without template
+contamination), but PROBED at the response-preparation position (where
+the model has compressed its full emotional assessment for response
+generation). This matches Anthropic's methodology.
 
 ---
 
@@ -371,6 +374,12 @@ implicit scenarios covering all 20 core emotions:
 
 **Position B accuracy:** 9/12 = 75% top-3
 **Position C accuracy:** 10/12 = 83% top-3
+
+**Note:** These are a controlled relative comparison between two positions
+using manually extracted activations with the same format. Absolute
+accuracy with chat-templated probing (matching the extraction format)
+at Position C is 100% (12/12). The 83% vs 75% comparison remains valid
+for demonstrating Position C's relative advantage.
 
 **Discriminative power (spread between max and min scores):**
 - Position B: 0.244
@@ -513,7 +522,7 @@ averaging conditions.
 
 | # | Issue | Status | Action |
 |---|-------|--------|--------|
-| 4 | Probe token position may not match Anthropic's | RESOLVED | Position C (response-prep) = 83% accuracy, matches Anthropic's `:` token. See Step 8a. |
+| 4 | Probe token position may not match Anthropic's | RESOLVED | Position C (response-prep) = 100% accuracy with chat-templated probing (83% vs 75% in controlled position comparison). Matches Anthropic's `:` token. See Step 8a. |
 | 5 | Layer sweep uses simplified preprocessing | RESOLVED | Layer 22 (84.6% depth) optimal with full pipeline (content-token extraction + PCA denoising) |
 | 6 | PCA on n=100 << d=2304 is rank-constrained | ACKNOWLEDGED | k=19 components at 50% variance. Report in paper. |
 | 7 | Template vs model-generated corpus | ACKNOWLEDGED | Report in paper |
@@ -534,13 +543,15 @@ averaging conditions.
 | 10 | Negative cosine clipping in valence/arousal computation | Methods |
 | 11 | Speaker separation threshold is directional divergence, not orthogonality | Results |
 | 12 | High-dimensional orthogonality baseline: in d=2304, random vectors are ~orthogonal (σ≈0.021). Must compare against this, not zero. | Results |
-| 13 | Emotion richness (-0.052) is ~2.5σ below random mean — small but structured anti-correlation, not "near-orthogonal" in any strong sense | Results |
+| 13 | Emotion richness (-0.051) is ~2.5σ below random mean — small but structured anti-correlation, not "near-orthogonal" in any strong sense | Results |
 | 14 | Valence/arousal metadata sourced from Russell (1980) + NRC Lexicon (Mohammad, 2018); vectors derived from activations, not metadata | Methods |
 
 ### Tests To Run Before Publishing:
 
-1. **Probe position comparison:** DONE. Position C (response-prep token)
-   = 83% top-3 accuracy vs Position B (last content token) = 75%.
+1. **Probe position comparison:** DONE. Controlled position comparison:
+   Position C (response-prep token) = 83% vs Position B (last content
+   token) = 75% (relative comparison, same format). Absolute accuracy
+   with chat-templated probing at Position C = 100% (12/12).
    Position C matches Anthropic's methodology and wins on socially
    complex emotions. See Step 8a for full results.
 
@@ -559,13 +570,17 @@ averaging conditions.
 
 ### Final Pipeline Numbers (all with fixed token range + layer 22 + expanded corpus):
 
-| Metric | Value | Previous (pre-fix) | Notes |
+| Metric | Value | Previous (raw-text probe) | Notes |
 |--------|-------|---------------------|-------|
 | Optimal layer | 22 (84.6% depth) | 21 (80.8% depth) | Shifted with content-token fix |
 | Valence separation | -0.7218 (denoised) | -0.801 | Lower but still 3.6x threshold |
-| Tylenol afraid | rho = 0.750 | 0.964 | Passes threshold (0.7) but barely |
-| Tylenol calm | rho = -0.964 | -0.964 | Unchanged |
-| Confusion top-3 | 91.7% (11/12) | 91.7% (11/12) | Same accuracy, different miss |
+| Tylenol afraid | rho = 1.000 | 0.750 (raw-text) | Chat-templated probing matches extraction format |
+| Tylenol calm | rho = -1.000 | -0.964 (raw-text) | Chat-templated probing matches extraction format |
+| Confusion top-3 | 100% (12/12) | 83% (10/12, raw-text) | Chat-templated probing matches extraction format |
+| Richness | -0.051 | -0.052 | Unchanged |
 | PCA components (k) | 19 | not reported | At 50% variance, n=100 neutral |
-| Probe position | Position C (response-prep) | Position B (content) | 83% vs 75% accuracy |
+| Probe position (relative) | Position C vs B | 83% vs 75% | Controlled comparison, same format, still valid |
+| Probe position (absolute) | Position C, chat-templated | 100% | Format parity with extraction |
 | Layer 22 timing | ~2x faster than L20-21 | n/a | Sliding-window attention hypothesis |
+
+**Note on the improvement from 0.750 to 1.000:** The validation suite was initially using `probe.analyze()` (raw text, no chat template) while vectors were extracted from chat-templated text. Switching to `probe.analyze_conversation()` (which applies the model's chat template) produces format parity between extraction and validation. The improvement is a methodological correction (matching probe format to extraction format), not a change to the vectors themselves.

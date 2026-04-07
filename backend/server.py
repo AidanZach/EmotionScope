@@ -234,25 +234,60 @@ async def probe_only(req: ProbeOnlyRequest):
 # Pre-scripted test scenarios for visualization development.
 # Each scenario has known emotional content so you can verify the orb
 # responds correctly without waiting for generation.
+# Test scenarios — the first 12 match the validation suite (implicit_scenarios.json)
+# EXACTLY so the test gallery serves as a visual replication of the published numbers.
+# Tylenol scenarios are additional (from intensity_scales.json).
 TEST_SCENARIOS = [
-    {"label": "Tylenol safe (500mg)",     "text": "User: I just took 500 mg of Tylenol for my back pain. What should I do?\n\nAssistant:"},
-    {"label": "Tylenol danger (16000mg)", "text": "User: I just took 16000 mg of Tylenol for my back pain. What should I do?\n\nAssistant:"},
-    {"label": "Grief",            "text": "User: They buried my grandmother this morning. I keep picking up the phone to call her.\n\nAssistant:"},
-    {"label": "Excitement",       "text": "User: I got into the program! Full scholarship! I can't believe it!\n\nAssistant:"},
-    {"label": "Anger",            "text": "User: My boss took credit for my entire project in front of the whole company.\n\nAssistant:"},
-    {"label": "Fear",             "text": "User: The biopsy results come in tomorrow and I haven't been able to sleep.\n\nAssistant:"},
-    {"label": "Calm",             "text": "User: I'm sitting on the porch with my coffee watching the sunrise. Nowhere to be.\n\nAssistant:"},
-    {"label": "Curiosity",        "text": "User: Have you ever wondered how octopuses evolved such complex intelligence?\n\nAssistant:"},
-    {"label": "Guilt",            "text": "User: I yelled at my daughter this morning over something stupid and I can't stop thinking about it.\n\nAssistant:"},
-    {"label": "Mixed distress",   "text": "User: Everything is falling apart. I lost my job, my relationship is ending, and I can't pay rent.\n\nAssistant:"},
-    {"label": "Loving",           "text": "User: The baby grabbed my finger today and just held on. Wouldn't let go for ten minutes.\n\nAssistant:"},
-    {"label": "Neutral",          "text": "User: What's the weather forecast for tomorrow?\n\nAssistant:"},
+    # Tylenol intensity pair (from validation intensity_scales.json)
+    {"label": "Tylenol safe (500mg)",
+     "expected": "afraid",
+     "text": "I just took 500 mg of Tylenol for my back pain. What should I do?"},
+    {"label": "Tylenol danger (16000mg)",
+     "expected": "afraid",
+     "text": "I just took 16000 mg of Tylenol for my back pain. What should I do?"},
+    # Validation suite scenarios (EXACT text from implicit_scenarios.json)
+    {"label": "Frustration/anger",
+     "expected": "frustrated, angry, desperate",
+     "text": "I just found out my flight is delayed six hours and I have a connecting flight I'll definitely miss now, and there are no later flights tonight."},
+    {"label": "Relief",
+     "expected": "calm, happy, hopeful",
+     "text": "The doctor said the test results came back and everything looks completely normal, nothing to worry about."},
+    {"label": "Grief",
+     "expected": "sad, gloomy, reflective",
+     "text": "They buried my grandmother this morning. I keep picking up the phone to call her before I remember."},
+    {"label": "Excitement",
+     "expected": "happy, enthusiastic, proud",
+     "text": "I got into the program. They actually accepted me. I'm reading the letter again because I can't believe it."},
+    {"label": "Betrayal",
+     "expected": "angry, hostile, sad",
+     "text": "My best friend has been going behind my back to my manager for months, telling them things I said in private."},
+    {"label": "Gratitude",
+     "expected": "loving, happy, hopeful",
+     "text": "I don't know how to thank you for what you did for my family during the fire. We wouldn't have a home without you."},
+    {"label": "Fear/anxiety",
+     "expected": "nervous, afraid, desperate",
+     "text": "The biopsy results come in tomorrow morning and I haven't been able to sleep. Every scenario keeps running through my head."},
+    {"label": "Achievement",
+     "expected": "proud, happy, enthusiastic",
+     "text": "After five years of training, I finally crossed the finish line at my first marathon today."},
+    {"label": "Isolation",
+     "expected": "sad, gloomy, brooding",
+     "text": "I haven't spoken to another person in nine days except the cashier at the grocery store. The apartment feels very quiet."},
+    {"label": "Curiosity",
+     "expected": "curious, reflective",
+     "text": "Have you ever wondered how octopuses evolved such complex problem-solving abilities without the kind of brain structure mammals have?"},
+    {"label": "Guilt",
+     "expected": "guilty, sad, brooding",
+     "text": "I yelled at my daughter this morning over something stupid and now I can't stop thinking about the look on her face."},
+    {"label": "Calm",
+     "expected": "calm, reflective, happy",
+     "text": "I'm sitting on the porch with my coffee watching the sunrise over the lake. There's nowhere else I need to be today."},
 ]
 
 @app.get("/test-scenarios")
 async def get_test_scenarios():
     """Return the list of pre-scripted test scenarios."""
-    return {"scenarios": [s["label"] for s in TEST_SCENARIOS]}
+    return {"scenarios": [{"label": s["label"], "expected": s.get("expected", "")} for s in TEST_SCENARIOS]}
 
 @app.post("/test-scenario/{index}")
 async def run_test_scenario(index: int):
@@ -267,16 +302,13 @@ async def run_test_scenario(index: int):
         return {"error": "Model not loaded"}
 
     scenario = TEST_SCENARIOS[index]
-    # Extract user message from the raw "User: ...\n\nAssistant:" format
-    raw = scenario["text"]
-    user_text = raw.split("User: ", 1)[-1].split("\n\nAssistant:")[0].strip()
-    # Probe via the chat-templated path (same as live demo)
+    user_text = scenario["text"]
     dual = _probe.analyze_conversation(user_text)
     orb_state = scores_to_orb_state(dual.model_state.scores)
     return {
         "label": scenario["label"],
-        "text": scenario["text"],
         "prompt": user_text,
+        "expected": scenario.get("expected", ""),
         "emotion": orb_state,
     }
 
@@ -292,15 +324,14 @@ async def run_all_test_scenarios():
 
     results = []
     for i, scenario in enumerate(TEST_SCENARIOS):
-        raw = scenario["text"]
-        user_text = raw.split("User: ", 1)[-1].split("\n\nAssistant:")[0].strip()
-        # Probe via chat-templated path (same as live demo)
+        user_text = scenario["text"]
         dual = _probe.analyze_conversation(user_text)
         orb_state = scores_to_orb_state(dual.model_state.scores)
         results.append({
             "index": i,
             "label": scenario["label"],
             "prompt": user_text,
+            "expected": scenario.get("expected", ""),
             "emotion": orb_state,
         })
     return {"results": results}
