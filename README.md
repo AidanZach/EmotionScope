@@ -8,7 +8,7 @@ Replicates and extends Anthropic's April 2026 paper ["Emotion Concepts and their
 
 ## What this is
 
-Anthropic demonstrated that language models develop internal **emotion vectors** — directions in neural network activation space that correspond to emotions like fear, calm, desperation, joy — and showed through steering experiments that these vectors **causally influence model behavior**. Critically, a model's activation along emotion-relevant directions can be completely decoupled from its output text.
+Anthropic demonstrated that language models develop internal **emotion vectors** — directions in neural network activation space that correspond to emotions like fear, calm, desperation, joy — and showed through steering experiments on Claude Sonnet 4.5 that these vectors **causally influence model behavior**. Critically, a model's activation along emotion-relevant directions can be completely decoupled from its output text.
 
 EmotionScope brings this to open-weight models:
 
@@ -106,7 +106,7 @@ cd frontend && npm run dev
 # Open http://localhost:5173
 ```
 
-The demo runs a live chat with the loaded model. Every message triggers real `model.generate()` — the emotion probe hooks into the generation forward pass to read the model's activation state. Animated orbs in the sidebar visualize the result in real-time. Click any segment in the conversation timeline to replay that turn's emotion state, with per-token attribution highlighting showing which tokens contributed most to the reading.
+The demo runs a live chat with the loaded model. Every message triggers real `model.generate()` — the emotion probe hooks into the generation forward pass to read the model's activation state. Animated orbs in the sidebar visualize the result in real-time. The conversation timeline is interactive: click any segment to replay that turn's emotion state and see per-token attribution highlighting (which tokens in the input contributed most to the emotion reading).
 
 ### Use a different model
 

@@ -7,18 +7,25 @@ import DetailPanel from './components/DetailPanel'
 import ExplainerPanel from './components/ExplainerPanel'
 import Legend from './components/Legend'
 import TestGallery from './components/TestGallery'
+import { emotionToColor } from './utils/palette'
 import './app.css'
 
 function EmotionLabel({ emotionState }) {
   if (!emotionState) return <div className="orb-emotion-label">—</div>
-  const top = (emotionState.top_emotions || []).slice(0, 2)
+  const top = (emotionState.top_emotions || []).slice(0, 3)
   if (!top.length) return <div className="orb-emotion-label">—</div>
 
-  const [first, second] = top
-  const showSecond = second && Math.abs(second[1]) > Math.abs(first[1]) * 0.4
-  const label = showSecond ? `${first[0]} · ${second[0]}` : first[0]
-
-  return <div className="orb-emotion-label">{label}</div>
+  return (
+    <div className="orb-emotion-breakdown">
+      {top.map(([name, score]) => (
+        <div key={name} className="orb-emotion-row">
+          <span className="orb-emotion-swatch" style={{ background: emotionToColor(name) }} />
+          <span className="orb-emotion-name">{name}</span>
+          <span className="orb-emotion-score">{score.toFixed(3)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function EmotionMetrics({ emotionState }) {

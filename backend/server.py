@@ -528,6 +528,7 @@ def _compute_token_attribution(text: str, dominant_emotion: str | None) -> dict 
         return {
             "tokens": content_tokens,
             "scores": content_scores,
+            "dominant": dominant_emotion,
         }
     else:
         # HuggingFace backend — similar but with hooks
@@ -563,6 +564,7 @@ def _compute_token_attribution(text: str, dominant_emotion: str | None) -> dict 
         return {
             "tokens": token_strings[start:end],
             "scores": scores[start:end],
+            "dominant": dominant_emotion,
         }
 
 

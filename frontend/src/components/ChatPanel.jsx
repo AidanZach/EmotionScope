@@ -1,31 +1,42 @@
 import { useState, useRef, useEffect } from 'react'
+import { emotionToColor } from '../utils/palette'
+import { oklchToRgb } from '../utils/oklch'
+import { PALETTE } from '../utils/palette'
 
 const API_URL = 'http://localhost:8000'
 
 /**
  * Render text with per-token emotion heatmap.
- * Each token gets a background color proportional to its attribution score.
+ * Each token gets a background in the dominant emotion's OKLCH color,
+ * with opacity proportional to its attribution score.
+ * Hover shows the emotion name and exact cosine similarity.
  */
-function TokenHeatmap({ tokens, scores }) {
+function TokenHeatmap({ tokens, scores, dominant }) {
   if (!tokens || !scores || !tokens.length) return null
 
-  // Normalize scores to [0, 1] range for color mapping
   const maxScore = Math.max(...scores.map(Math.abs), 0.01)
+
+  // Get the dominant emotion's palette color as RGB for alpha blending
+  const pal = PALETTE[dominant] || { L: 0.58, C: 0.03, H: 240 }
+  const [r, g, b] = oklchToRgb(pal.L, pal.C, pal.H)
+  const cr = Math.round(r * 255)
+  const cg = Math.round(g * 255)
+  const cb = Math.round(b * 255)
 
   return (
     <span className="token-heatmap">
       {tokens.map((tok, i) => {
         const normalized = Math.max(0, scores[i]) / maxScore
-        const alpha = normalized * 0.5  // subtle, max 50% opacity
+        const alpha = normalized * 0.55
         return (
           <span
             key={i}
             className="token-heatmap-token"
             style={{
-              background: `rgba(90, 180, 220, ${alpha.toFixed(3)})`,
+              background: `rgba(${cr}, ${cg}, ${cb}, ${alpha.toFixed(3)})`,
               borderRadius: normalized > 0.3 ? 2 : 0,
             }}
-            title={`${tok.trim()}: ${scores[i].toFixed(3)}`}
+            title={`"${tok.trim()}" → ${dominant}: ${scores[i].toFixed(3)} (${(normalized * 100).toFixed(0)}% of max)`}
           >
             {tok}
           </span>
@@ -98,9 +109,12 @@ export default function ChatPanel({ onEmotionUpdate, highlightedTurn = null, spe
         { role: 'assistant', content: data.response },
       ])
 
-      // Store token attribution for this turn
+      // Store token attribution (dominant comes from backend or user_emotion fallback)
       if (data.token_attribution) {
-        setAttributions((prev) => [...prev, data.token_attribution])
+        setAttributions((prev) => [...prev, {
+          ...data.token_attribution,
+          dominant: data.token_attribution.dominant || data.user_emotion?.dominant || '',
+        }])
       } else {
         setAttributions((prev) => [...prev, null])
       }
@@ -131,9 +145,9 @@ export default function ChatPanel({ onEmotionUpdate, highlightedTurn = null, spe
           const isHighlighted = i >= highlightStart && i <= highlightEnd
           const isDimmed = highlightedTurn !== null && !isHighlighted
 
-          // For user messages, check if we have token attribution for this turn
+          // For user messages, show token attribution heatmap if available
           const turnIndex = Math.floor(i / 2)
-          const showHeatmap = msg.role === 'user' && isHighlighted && attributions[turnIndex]
+          const showHeatmap = msg.role === 'user' && attributions[turnIndex]
 
           return (
             <div
@@ -146,6 +160,7 @@ export default function ChatPanel({ onEmotionUpdate, highlightedTurn = null, spe
                   <TokenHeatmap
                     tokens={attributions[turnIndex].tokens}
                     scores={attributions[turnIndex].scores}
+                    dominant={attributions[turnIndex].dominant}
                   />
                 ) : (
                   msg.content
