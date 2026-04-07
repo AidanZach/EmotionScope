@@ -416,7 +416,8 @@ def fig_circumplex():
                   fontsize=10)
     ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} variance) — likely Arousal",
                   fontsize=10)
-    ax.set_title("Emotion Vector Space — PCA Projection\n(Gemma 2 2B IT, layer 21)")
+    layer = saved.get("probe_layer_used", saved.get("model_info", {}).get("probe_layer", "?"))
+    ax.set_title(f"Emotion Vector Space — PCA Projection\n(Gemma 2 2B IT, layer {layer})")
     ax.axhline(y=0, color="#2a2a3a", linewidth=0.5)
     ax.axvline(x=0, color="#2a2a3a", linewidth=0.5)
     ax.grid(True, alpha=0.3)
