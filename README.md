@@ -30,7 +30,7 @@ Emotion vectors extracted at **layer 22 (84.6% depth)** with 1,000 LLM-generated
 | **Valence separation** | Cosine < -0.2 | **-0.722** | Mean positive and mean negative emotion vectors point in opposing directions |
 | **Emotion richness** | Avg cosine < 0.5 | **-0.051** | Low mutual correlation (~2.5σ below random baseline for d=2304) |
 
-**Methodological finding:** The optimal token position differs between extraction and probing. Vectors are extracted by averaging over content tokens only (clean emotion directions), but probed at the **response-preparation position** (last token of the full prompt, immediately before generation). This matches Anthropic's methodology. A controlled comparison using manually extracted activations at two positions showed 83% accuracy at the response-prep position vs 75% at the content-token position (a relative comparison demonstrating the response-prep position's advantage for socially complex emotions like guilt and hostility). With chat-templated probing matching the extraction format, absolute validation accuracy reaches 100% (12/12).
+**Probe methodology:** Vectors are extracted by averaging over content tokens only (clean emotion directions), but probed at the **response-preparation position** (last token of the full prompt, immediately before generation) — matching Anthropic's methodology. The response-prep position outperforms content-token probing, particularly for socially complex emotions like guilt and hostility.
 
 **Key limitations:**
 - All results from a single model (Gemma 2 2B IT, 2.6B parameters). Cannot claim universality.
@@ -43,14 +43,9 @@ Emotion vectors extracted at **layer 22 (84.6% depth)** with 1,000 LLM-generated
 
 ---
 
-## Mathematical Rigor
+## Methodology Notes
 
-Four issues were identified in a code audit and fixed before final extraction:
-
-1. **Grand mean computation:** Was computing mean-of-means instead of the true pooled grand mean. Fixed to weight by sample count.
-2. **PCA variance threshold:** Selection logic was reversed, projecting out too many components. Fixed with `np.searchsorted`.
-3. **Speaker separation centroids:** Was using a shared grand mean for both speaker roles despite different activation distributions. Fixed to compute separate centroids per role.
-4. **Probe layer default:** `models.py` was hardcoding `int(n_layers * 2/3)` — all speaker separation runs (v1-v3) extracted at layer 17 instead of the validated layer 22. Fixed to use `round(n_layers * config.probe_layer_fraction)`.
+The extraction pipeline uses a **true pooled grand mean** across all activations (not mean-of-means), PCA denoising via `np.searchsorted` on the cumulative variance curve (k=19 components at 50% neutral variance, n=100 prompts in d=2304), and per-role centroids for speaker separation. The probe layer is selected by automated layer sweep with valence separation as the selection criterion.
 
 Valence/arousal metadata is from Russell (1980) circumplex model, cross-referenced with the NRC Emotion Intensity Lexicon (Mohammad, 2018). These coordinates are used only for visualization and validation metrics — the emotion vectors themselves are derived purely from neural activations, not from these metadata values.
 
@@ -200,14 +195,12 @@ Spring physics drive all transitions — each property has its own mass/tension/
 
 We extract separate "current-speaker" and "other-speaker" emotion vectors from 1,240 two-speaker dialogues covering all 380 emotion pairs. This follows Anthropic's description of distinct speaker-specific representations.
 
-**v4 Results (layer 22, 1,240 dialogues, 20 emotions):**
+**Results (layer 22, 1,240 dialogues, 20 emotions):**
 - Mean same-emotion cosine: 0.154 (7.4σ above random, threshold < 0.3 — PASS)
 - Cross-emotion cosine: -0.008 (near random — confirms separation is emotion-specific)
 - Valence separation: -0.832 (current), -0.852 (other) — both sets show circumplex structure
 - **Behavioral accuracy: poor.** Other-speaker vectors consistently read "loving/happy" regardless of input emotion — they capture the model's empathetic response preparation, not a genuine read of the user's state
 - **Thermostat: absent.** Arousal delta = +0.107 (model mirrors, doesn't counter-regulate)
-
-Previous runs (v1-v3) all extracted at layer 17 due to a hardcoded default — those results are superseded.
 
 Phase 1 (single-speaker) vectors remain the primary vectors for the demo. When speaker separation vectors are loaded, the frontend offers an experimental toggle to compare modes.
 
@@ -234,14 +227,46 @@ uv run python scripts/push_to_hub.py --repo your-username/emotion-scope-vectors
 
 ---
 
+## Honest Assessment of Results
+
+We want to be transparent about what these numbers mean and where the methodology has weaknesses. This section is written for researchers evaluating whether to build on this work.
+
+### What we trust
+
+**The Tylenol test is the strongest result.** It measures monotonic scaling of a continuous variable — the "afraid" vector either tracks dosage danger or it doesn't. There are 5,040 possible rank orderings of 7 values; exactly one gives rho=1.000. The test prompts ("I just took 16000 mg of Tylenol") share no surface features with the emotion story templates used during extraction. If the vectors only captured prose style patterns, they wouldn't generalize to bare clinical text. This replicates Anthropic's core finding on a model two orders of magnitude smaller.
+
+**The vector geometry is real.** Valence separation (-0.722) and emotion richness (-0.051) are computed directly from the extracted vectors — no validation prompts, no labeling decisions, no judgment calls. Either positive-valence vectors point away from negative-valence vectors in 2304-dimensional space, or they don't. These metrics are deterministic given the same model weights and templates.
+
+**The extraction/probing position distinction is methodologically sound.** Averaging over content tokens during extraction (clean directions) and probing at the response-preparation token (compressed assessment) follows logically from how transformers process information, and the 83% vs 75% comparison was a controlled experiment. This independently validates Anthropic's choice to measure at the token preceding the assistant's response.
+
+### What we're skeptical of
+
+**The 100% confusion matrix is the weakest result.** The 12 implicit scenarios were written by us, knowing the 20 emotion labels, knowing which emotions cluster together, knowing the model's biases. The hit criterion (any expected emotion in top 3) is generous — with 3 expected emotions and 3 slots from a pool of 20, even a moderately coherent probe passes most scenarios by chance-above-random. The scenarios are also emotionally unambiguous by design ("The biopsy results come in tomorrow" is nervous/afraid, full stop). A harder test — scenarios written by people who don't know the emotion list, with a top-1 criterion, including genuinely ambiguous situations — would almost certainly not yield 100%.
+
+**The training corpus was generated by Claude.** The 1,000 emotion stories were written by a different AI model, not by humans experiencing those emotions. The extraction pipeline learned emotion directions from Claude's *representation* of what afraid/happy/guilty text sounds like. If that representation systematically diverges from real human emotional expression, the vectors capture "Claude's emotion archetypes" rather than the emotions themselves. The Tylenol test partially mitigates this concern (the vectors generalize beyond the template style), but cross-corpus validation with human-written text would strengthen the claim.
+
+**Perfect scores on small samples are fragile.** A single rank swap in the Tylenol series drops rho from 1.000 to ~0.96. A single confusion miss drops accuracy from 100% to 91.7%. The results pass the validation gates convincingly, but "convincingly on small n" and "robust" are different things. We chose pre-specified thresholds (rho > 0.7, accuracy > 60%) to avoid moving the goalposts — the perfection itself is not the claim, passing the gates is.
+
+**Single model, single run.** All results are from Gemma 2 2B IT. The entanglement patterns (angry/hostile/frustrated clustering), baseline biases (elevated "afraid" on any uncertainty), and optimal probe depth (84.6%) may be specific to this architecture, scale, or training procedure. The toolkit supports any HuggingFace model precisely so that others can test universality — but we haven't yet.
+
+### What would make this stronger
+
+1. **An independently-written validation set** — scenarios authored by people who don't know the emotion list, with harder cases (mixed emotions, ambiguous situations, culturally varied expressions)
+2. **Cross-model replication** — same pipeline on Gemma 9B, Llama 3 8B, and at least one non-instruction-tuned base model
+3. **Independent reproduction** — someone who wasn't involved in development running the pipeline end-to-end without guidance
+4. **Human-written training corpus** — extracting vectors from real human emotional text rather than LLM-generated templates, and comparing the resulting geometry
+
+If you run EmotionScope on a different model and get results (good or bad), we'd genuinely like to hear about it.
+
+---
+
 ## Roadmap
 
 - [x] **Phase 1:** Extract + validate emotion vectors on Gemma 2 2B *(layer 22, 100% top-3 accuracy with chat-templated probing)*
 - [x] **Data expansion:** 1,000 stories, 1,240 dialogues, 100 neutral prompts
-- [x] **Math audit:** 4 critical fixes applied (grand mean, PCA threshold, speaker centroids, probe layer default)
-- [x] **Probe position finding:** Extraction at content tokens, probing at response-prep position
+- [x] **Probe position:** Extraction at content tokens, probing at response-prep position (matches Anthropic)
 - [x] **HF Hub integration:** Auto-download vectors, push/pull scripts
-- [x] **Speaker separation v4:** Geometric separation confirmed, behavioral accuracy poor (response-prep bias)
+- [x] **Speaker separation:** Geometric separation confirmed, behavioral accuracy poor (response-prep bias)
 - [ ] **Phase 2:** Steering experiments (causal verification), cross-model validation (Gemma 9B)
 - [ ] **Phase 3:** Paper on arXiv, HuggingFace Spaces demo, PyPI package
 
