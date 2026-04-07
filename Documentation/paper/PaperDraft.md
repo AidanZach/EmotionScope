@@ -310,6 +310,8 @@ The instruction-tuning process — teaching the model to act as an assistant tha
 
 **Probe position caveat.** The extraction-vs-probing position distinction (Section 4.8) was validated on n=12 scenarios from a single model. We cannot determine whether the accuracy difference (83% vs 75%) reflects a genuine property of how transformers process emotional content across chat template tokens, or an artifact of Gemma 2's specific template structure. Cross-model validation on models with different template formats (Llama, Mistral) would be needed to distinguish these hypotheses.
 
+**Validation prompt format.** The Tylenol intensity and implicit scenario validation tests use raw-format prompts (`"User: ...\n\nAssistant:"`) processed via `probe.analyze()`, while the live demo and test gallery use chat-templated prompts processed via `probe.analyze_conversation()` (applying Gemma's `<start_of_turn>` template). The model may produce different activation patterns for the same content in these two formats. Our published validation numbers (Tylenol ρ = 0.750, top-3 = 83%) are from the raw-format path. The live demo results may differ slightly. A complete validation would re-run the suite with chat-templated prompts, which we leave to future work.
+
 **Probe layer default bug (resolved).** A hardcoded `int(n_layers * 2/3)` in the model loading code meant that all speaker separation extractions (v1 through v3) ran at layer 17 rather than the validated optimal layer 22. This was discovered during the mathematical audit and fixed. All speaker separation results reported in this paper (v4) use vectors extracted at the correct layer 22 with the full 1,240-dialogue corpus.
 
 ### 5.4 Real-Time Visualization

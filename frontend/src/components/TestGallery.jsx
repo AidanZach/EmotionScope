@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import EmotionOrbCanvas from './EmotionOrb'
+import { emotionToColor } from '../utils/palette'
 
 const API_URL = 'http://localhost:8000'
 
 /**
  * Visual test gallery — shows all pre-scripted scenarios simultaneously.
- * Each orb renders the emotion state for a different scenario.
- * Use this during visualization development to see the full range at once.
- *
- * Access via: http://localhost:5173/test (add route in App.jsx)
- * Or render directly as a component.
+ * Each card shows the orb, the input prompt, the dominant emotion,
+ * and a breakdown of top scores with color swatches showing what
+ * each emotion contributes to the blended orb color.
  */
 export default function TestGallery() {
   const [results, setResults] = useState(null)
@@ -31,14 +30,13 @@ export default function TestGallery() {
     }
   }
 
-  // Auto-run on mount
   useEffect(() => { runAll() }, [])
 
   return (
     <div className="test-gallery">
       <div className="test-gallery-header">
         <h2>Orb Test Gallery</h2>
-        <p>12 pre-scripted emotional scenarios. Each orb shows the model's internal state.</p>
+        <p>Pre-scripted scenarios. Each orb shows the model's activation state. Color is a weighted blend of all active emotions — the swatches below each orb show what contributes.</p>
         <button onClick={runAll} disabled={loading} className="test-run-btn">
           {loading ? 'Running...' : 'Re-run all scenarios'}
         </button>
@@ -49,6 +47,8 @@ export default function TestGallery() {
         <div className="test-grid">
           {results.map((r) => {
             const e = r.emotion
+            const topEmotions = (e.top_emotions || []).slice(0, 4)
+
             return (
               <div key={r.index} className="test-card">
                 <div className="test-card-label">{r.label}</div>
@@ -60,12 +60,21 @@ export default function TestGallery() {
                 <div className="test-card-metrics">
                   v={e.valence?.toFixed(2)} a={e.arousal?.toFixed(2)}
                 </div>
-                <div className="test-card-scores">
-                  {(e.top_emotions || []).slice(0, 3).map(([n, s]) => (
-                    <span key={n} className="test-score-chip">
-                      {n} {s.toFixed(2)}
-                    </span>
-                  ))}
+                {/* Score breakdown with color swatches */}
+                <div className="test-card-breakdown">
+                  {topEmotions.map(([name, score]) => {
+                    const color = emotionToColor(name)
+                    return (
+                      <div key={name} className="test-score-row">
+                        <span
+                          className="test-score-swatch"
+                          style={{ background: color }}
+                        />
+                        <span className="test-score-name">{name}</span>
+                        <span className="test-score-value">{score.toFixed(3)}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )

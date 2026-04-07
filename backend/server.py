@@ -258,8 +258,8 @@ async def get_test_scenarios():
 async def run_test_scenario(index: int):
     """
     Run a pre-scripted scenario through the probe (no generation).
-    Returns the emotion state in ~1-2 seconds.
-    Use this to rapidly test visualization responses.
+    Uses analyze_conversation() — the same chat-templated path as the
+    live demo — so results match what users see during actual conversation.
     """
     if index < 0 or index >= len(TEST_SCENARIOS):
         return {"error": f"Index {index} out of range (0-{len(TEST_SCENARIOS)-1})"}
@@ -267,11 +267,16 @@ async def run_test_scenario(index: int):
         return {"error": "Model not loaded"}
 
     scenario = TEST_SCENARIOS[index]
-    state = _probe.analyze(scenario["text"])
-    orb_state = scores_to_orb_state(state.scores)
+    # Extract user message from the raw "User: ...\n\nAssistant:" format
+    raw = scenario["text"]
+    user_text = raw.split("User: ", 1)[-1].split("\n\nAssistant:")[0].strip()
+    # Probe via the chat-templated path (same as live demo)
+    dual = _probe.analyze_conversation(user_text)
+    orb_state = scores_to_orb_state(dual.model_state.scores)
     return {
         "label": scenario["label"],
         "text": scenario["text"],
+        "prompt": user_text,
         "emotion": orb_state,
     }
 
@@ -279,18 +284,19 @@ async def run_test_scenario(index: int):
 async def run_all_test_scenarios():
     """
     Run ALL test scenarios and return results. Takes ~15-20 seconds.
-    Useful for generating a visualization test matrix.
+    Uses analyze_conversation() — the same chat-templated path as the
+    live demo — so test gallery results match what users see in chat.
     """
     if _probe is None:
         return {"error": "Model not loaded"}
 
     results = []
     for i, scenario in enumerate(TEST_SCENARIOS):
-        state = _probe.analyze(scenario["text"])
-        orb_state = scores_to_orb_state(state.scores)
-        # Extract just the user message from the prompt (strip "User: " and "\n\nAssistant:")
         raw = scenario["text"]
         user_text = raw.split("User: ", 1)[-1].split("\n\nAssistant:")[0].strip()
+        # Probe via chat-templated path (same as live demo)
+        dual = _probe.analyze_conversation(user_text)
+        orb_state = scores_to_orb_state(dual.model_state.scores)
         results.append({
             "index": i,
             "label": scenario["label"],

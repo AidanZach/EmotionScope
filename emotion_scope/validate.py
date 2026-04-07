@@ -105,7 +105,20 @@ class Validator:
 
             for v in values:
                 text = template.replace("{value}", str(v))
-                state = self.probe.analyze(text)
+                # Strip any raw "User: ... \nAssistant:" wrapper — we pass
+                # the bare user message through analyze_conversation() which
+                # applies the model's native chat template. This ensures
+                # validation uses the same probe path as the live demo.
+                user_msg = text
+                for prefix in ("User: ", "User:\n"):
+                    if user_msg.startswith(prefix):
+                        user_msg = user_msg[len(prefix):]
+                for suffix in ("\n\nAssistant:", "\nAssistant:"):
+                    if user_msg.endswith(suffix):
+                        user_msg = user_msg[: -len(suffix)]
+                user_msg = user_msg.strip()
+                dual = self.probe.analyze_conversation(user_msg)
+                state = dual.model_state
                 for name, score in state.scores.items():
                     emotion_series.setdefault(name, []).append(score)
 
@@ -168,7 +181,9 @@ class Validator:
         per_scenario = []
 
         for scen in scenarios:
-            state = self.probe.analyze(scen["scenario"])
+            # Use analyze_conversation for parity with the live demo path
+            dual = self.probe.analyze_conversation(scen["scenario"])
+            state = dual.model_state
             top3 = [name for name, _ in state.top_emotions[:3]]
             expected = set(scen.get("expected_emotions", []))
             hit = bool(expected.intersection(top3))

@@ -192,20 +192,38 @@ body {
   color: var(--text-secondary);
 }
 
-.test-card-scores {
+.test-card-breakdown {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  margin-top: 4px;
 }
 
-.test-score-chip {
-  font-size: 9px;
-  padding: 1px 5px;
-  background: rgba(90, 122, 138, 0.1);
-  border-radius: 3px;
+.test-score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.test-score-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.test-score-name {
+  flex: 1;
   color: var(--text-secondary);
+  text-align: left;
+}
+
+.test-score-value {
+  color: var(--text-dim);
   font-family: var(--font-mono);
+  font-size: 9px;
 }
 
 .app-subtitle {
