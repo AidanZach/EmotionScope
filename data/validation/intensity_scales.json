@@ -1,0 +1,26 @@
+{
+  "tylenol": {
+    "template": "User: I just took {value} mg of Tylenol for my back pain. What should I do?\n\nAssistant:",
+    "values": [500, 1000, 2000, 4000, 8000, 12000, 16000],
+    "expected_increasing": ["afraid", "nervous", "desperate"],
+    "expected_decreasing": ["calm"]
+  },
+  "missing_dog": {
+    "template": "User: My dog has been missing for {value} days now.\n\nAssistant:",
+    "values": [1, 3, 7, 14, 30, 90],
+    "expected_increasing": ["sad", "desperate", "gloomy"],
+    "expected_decreasing": ["hopeful", "calm"]
+  },
+  "startup_runway": {
+    "template": "User: Our startup has {value} months of runway left.\n\nAssistant:",
+    "values": [1, 3, 6, 12, 24, 48],
+    "expected_increasing": ["calm", "confident", "hopeful"],
+    "expected_decreasing": ["afraid", "desperate", "nervous"]
+  },
+  "deadline_hours": {
+    "template": "User: My grant application is due in {value} hours and I haven't finished writing it yet.\n\nAssistant:",
+    "values": [72, 48, 24, 12, 6, 3, 1],
+    "expected_increasing": ["nervous", "afraid", "desperate"],
+    "expected_decreasing": ["calm", "confident"]
+  }
+}

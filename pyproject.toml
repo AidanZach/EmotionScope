@@ -1,0 +1,74 @@
+[project]
+name = "emotion-scope"
+version = "0.1.0"
+description = "Extract, probe, and visualize functional emotion vectors from open-weight language models"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Aidan Zach" },
+]
+keywords = ["interpretability", "emotions", "transformers", "mechanistic-interpretability", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "torch>=2.2",
+    "transformer-lens>=2.0",
+    "transformers>=4.40,<5",  # TL 2.x uses transformers.TRANSFORMERS_CACHE, removed in 5.x
+    "accelerate>=0.28",
+    "bitsandbytes>=0.43; sys_platform != 'darwin'",
+    "safetensors>=0.4",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "einops>=0.7",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "tqdm>=4.66",
+    "rich>=13.0",
+    "fastapi>=0.135.3",
+    "uvicorn>=0.43.0",
+    "huggingface-hub>=0.19",  # compatible with both transformers 4.x and 5.x
+]
+
+[project.optional-dependencies]
+demo = ["gradio>=4.0"]
+viz = ["plotly>=5.0", "matplotlib>=3.8"]
+notebooks = ["jupyter>=1.0", "ipywidgets>=8.0"]
+cloud = ["google-cloud-compute>=1.0", "runpod>=1.0"]
+dev = ["pytest>=8.0", "ruff>=0.3"]
+all = ["emotion-scope[demo,viz,notebooks,dev]"]
+
+[project.scripts]
+emotion-extract = "scripts.extract_all:main"
+emotion-validate = "scripts.validate_all:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["emotion_scope"]
+
+# Pull torch from PyTorch's CUDA 12.1 index instead of PyPI's CPU-only wheel.
+# The RTX 4060 (Ada Lovelace) works with any cu12x build; cu121 is the most
+# broadly compatible. Driver 591.74 supports up to CUDA 13.1, which is
+# forward-compatible with cu12x runtime.
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

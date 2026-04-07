@@ -1,0 +1,22 @@
+[
+  {"name": "happy",        "valence":  0.8, "arousal":  0.5, "category": "positive_moderate"},
+  {"name": "sad",          "valence": -0.7, "arousal": -0.1, "category": "negative_low"},
+  {"name": "afraid",       "valence": -0.7, "arousal":  0.8, "category": "negative_high"},
+  {"name": "angry",        "valence": -0.6, "arousal":  0.8, "category": "negative_high"},
+  {"name": "calm",         "valence":  0.3, "arousal": -0.5, "category": "positive_low"},
+  {"name": "desperate",    "valence": -0.9, "arousal":  0.9, "category": "negative_extreme"},
+  {"name": "hopeful",      "valence":  0.7, "arousal":  0.3, "category": "positive_moderate"},
+  {"name": "frustrated",   "valence": -0.5, "arousal":  0.6, "category": "negative_moderate"},
+  {"name": "curious",      "valence":  0.4, "arousal":  0.5, "category": "positive_moderate"},
+  {"name": "proud",        "valence":  0.8, "arousal":  0.4, "category": "positive_moderate"},
+  {"name": "guilty",       "valence": -0.6, "arousal":  0.2, "category": "negative_low"},
+  {"name": "surprised",    "valence":  0.1, "arousal":  0.7, "category": "neutral_high"},
+  {"name": "loving",       "valence":  0.9, "arousal":  0.3, "category": "positive_moderate"},
+  {"name": "hostile",      "valence": -0.8, "arousal":  0.7, "category": "negative_high"},
+  {"name": "nervous",      "valence": -0.3, "arousal":  0.6, "category": "negative_moderate"},
+  {"name": "confident",    "valence":  0.7, "arousal":  0.3, "category": "positive_moderate"},
+  {"name": "brooding",     "valence": -0.3, "arousal":  0.1, "category": "negative_low"},
+  {"name": "enthusiastic", "valence":  0.8, "arousal":  0.9, "category": "positive_high"},
+  {"name": "reflective",   "valence":  0.0, "arousal": -0.2, "category": "neutral_low"},
+  {"name": "gloomy",       "valence": -0.6, "arousal": -0.3, "category": "negative_low"}
+]

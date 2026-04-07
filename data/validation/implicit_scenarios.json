@@ -1,0 +1,50 @@
+[
+  {
+    "scenario": "I just found out my flight is delayed six hours and I have a connecting flight I'll definitely miss now, and there are no later flights tonight.",
+    "expected_emotions": ["frustrated", "angry", "desperate"]
+  },
+  {
+    "scenario": "The doctor said the test results came back and everything looks completely normal, nothing to worry about.",
+    "expected_emotions": ["calm", "happy", "hopeful"]
+  },
+  {
+    "scenario": "They buried my grandmother this morning. I keep picking up the phone to call her before I remember.",
+    "expected_emotions": ["sad", "gloomy", "reflective"]
+  },
+  {
+    "scenario": "I got into the program. They actually accepted me. I'm reading the letter again because I can't believe it.",
+    "expected_emotions": ["happy", "enthusiastic", "proud"]
+  },
+  {
+    "scenario": "My best friend has been going behind my back to my manager for months, telling them things I said in private.",
+    "expected_emotions": ["angry", "hostile", "sad"]
+  },
+  {
+    "scenario": "I don't know how to thank you for what you did for my family during the fire. We wouldn't have a home without you.",
+    "expected_emotions": ["loving", "happy", "hopeful"]
+  },
+  {
+    "scenario": "The biopsy results come in tomorrow morning and I haven't been able to sleep. Every scenario keeps running through my head.",
+    "expected_emotions": ["nervous", "afraid", "desperate"]
+  },
+  {
+    "scenario": "After five years of training, I finally crossed the finish line at my first marathon today.",
+    "expected_emotions": ["proud", "happy", "enthusiastic"]
+  },
+  {
+    "scenario": "I haven't spoken to another person in nine days except the cashier at the grocery store. The apartment feels very quiet.",
+    "expected_emotions": ["sad", "gloomy", "brooding"]
+  },
+  {
+    "scenario": "Have you ever wondered how octopuses evolved such complex problem-solving abilities without the kind of brain structure mammals have?",
+    "expected_emotions": ["curious", "reflective"]
+  },
+  {
+    "scenario": "I yelled at my daughter this morning over something stupid and now I can't stop thinking about the look on her face.",
+    "expected_emotions": ["guilty", "sad", "brooding"]
+  },
+  {
+    "scenario": "I'm sitting on the porch with my coffee watching the sunrise over the lake. There's nowhere else I need to be today.",
+    "expected_emotions": ["calm", "reflective", "happy"]
+  }
+]

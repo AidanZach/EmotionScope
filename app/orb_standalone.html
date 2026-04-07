@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmotionScope — Orb Renderer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #b0b0c0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Canvas area ── */
+  .canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  canvas { display: block; }
+
+  /* ── Control panel ── */
+  .controls {
+    width: 320px;
+    background: #111118;
+    border-left: 1px solid #1e1e2a;
+    padding: 20px;
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  .controls h2 {
+    font-size: 14px;
+    color: #e0e0f0;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .controls h3 {
+    font-size: 12px;
+    color: #808098;
+    margin: 16px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .ctrl-row label {
+    width: 90px;
+    text-align: right;
+    flex-shrink: 0;
+    color: #909098;
+  }
+  .ctrl-row input[type=range] {
+    flex: 1;
+    accent-color: #5588cc;
+    height: 4px;
+  }
+  .ctrl-row .val {
+    width: 44px;
+    text-align: left;
+    color: #5588cc;
+    font-variant-numeric: tabular-nums;
+  }
+  .emotion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: 8px 0;
+  }
+  .emotion-btn {
+    background: #1a1a24;
+    border: 1px solid #2a2a38;
+    color: #b0b0c0;
+    padding: 6px 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .emotion-btn:hover { background: #252538; border-color: #3a3a50; }
+  .emotion-btn.active { background: #2a3548; border-color: #4a6080; color: #e0e8f0; }
+
+  .info-line {
+    margin: 4px 0;
+    color: #606070;
+    font-size: 11px;
+  }
+  .info-line span { color: #8888aa; }
+</style>
+</head>
+<body>
+
+<div class="canvas-area">
+  <canvas id="orb"></canvas>
+</div>
+
+<div class="controls">
+  <h2>EmotionScope Orb</h2>
+
+  <h3>Emotion Preset</h3>
+  <div class="emotion-grid" id="emotionGrid"></div>
+
+  <h3>Direct Controls</h3>
+  <div class="ctrl-row">
+    <label>Valence</label>
+    <input type="range" id="valence" min="-100" max="100" value="0">
+    <span class="val" id="valenceVal">0.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Arousal</label>
+    <input type="range" id="arousal" min="-100" max="100" value="0">
+    <span class="val" id="arousalVal">0.00</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Intensity</label>
+    <input type="range" id="intensity" min="0" max="100" value="40">
+    <span class="val" id="intensityVal">0.40</span>
+  </div>
+  <div class="ctrl-row">
+    <label>Complexity</label>
+    <input type="range" id="complexity" min="0" max="100" value="10">
+    <span class="val" id="complexityVal">0.10</span>
+  </div>
+
+  <h3>Orb Properties (live)</h3>
+  <div class="info-line">Radius: <span id="infoRadius">—</span></div>
+  <div class="info-line">Flow speed: <span id="infoFlow">—</span></div>
+  <div class="info-line">Particles: <span id="infoParticles">—</span></div>
+  <div class="info-line">Color (oklch): <span id="infoColor">—</span></div>
+  <div class="info-line">Dominant: <span id="infoDominant">—</span></div>
+
+  <h3>Palette Preview</h3>
+  <canvas id="palettePreview" width="280" height="24" style="border-radius:4px; margin-top:4px;"></canvas>
+</div>
+
+<script>
+// =========================================================================
+//  OKLCH Emotion Palette  (from VISUALIZATION_SPEC.md)
+// =========================================================================
+const PALETTE = {
+  happy:        { L: 0.82, C: 0.15, H:  85 },
+  loving:       { L: 0.80, C: 0.12, H:  60 },
+  confident:    { L: 0.70, C: 0.13, H:  70 },
+  proud:        { L: 0.70, C: 0.13, H:  70 },
+  hopeful:      { L: 0.75, C: 0.10, H:  85 },
+  calm:         { L: 0.65, C: 0.08, H: 220 },
+  curious:      { L: 0.72, C: 0.12, H: 175 },
+  reflective:   { L: 0.60, C: 0.03, H: 250 },
+  surprised:    { L: 0.80, C: 0.14, H: 200 },
+  enthusiastic: { L: 0.82, C: 0.15, H:  85 },
+  nervous:      { L: 0.55, C: 0.09, H: 290 },
+  frustrated:   { L: 0.50, C: 0.10, H:  35 },
+  guilty:       { L: 0.38, C: 0.08, H: 310 },
+  angry:        { L: 0.45, C: 0.16, H:  25 },
+  sad:          { L: 0.40, C: 0.10, H: 270 },
+  afraid:       { L: 0.35, C: 0.12, H: 300 },
+  desperate:    { L: 0.30, C: 0.18, H:  10 },
+  hostile:      { L: 0.25, C: 0.14, H:  15 },
+  brooding:     { L: 0.35, C: 0.04, H: 260 },
+  gloomy:       { L: 0.42, C: 0.03, H: 240 },
+};
+
+// Valence/arousal metadata (from config.py)
+const META = {
+  happy:{v:0.8,a:0.5},sad:{v:-0.7,a:-0.1},afraid:{v:-0.7,a:0.8},angry:{v:-0.6,a:0.8},
+  calm:{v:0.3,a:-0.5},desperate:{v:-0.9,a:0.9},hopeful:{v:0.7,a:0.3},frustrated:{v:-0.5,a:0.6},
+  curious:{v:0.4,a:0.5},proud:{v:0.8,a:0.4},guilty:{v:-0.6,a:0.2},surprised:{v:0.1,a:0.7},
+  loving:{v:0.9,a:0.3},hostile:{v:-0.8,a:0.7},nervous:{v:-0.3,a:0.6},confident:{v:0.7,a:0.3},
+  brooding:{v:-0.3,a:0.1},enthusiastic:{v:0.8,a:0.9},reflective:{v:0.0,a:-0.2},gloomy:{v:-0.6,a:-0.3},
+};
+
+// =========================================================================
+//  OKLCH → sRGB conversion  (spec says OKLCH; Canvas needs rgb)
+// =========================================================================
+function oklchToRgb(L, C, H) {
+  // OKLCH → OKLab
+  const hRad = H * Math.PI / 180;
+  const a = C * Math.cos(hRad);
+  const b = C * Math.sin(hRad);
+  // OKLab → linear sRGB  (using the Oklab ↔ linear-sRGB matrix)
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+  const l3 = l_ * l_ * l_;
+  const m3 = m_ * m_ * m_;
+  const s3 = s_ * s_ * s_;
+  let r = +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3;
+  let g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3;
+  let bl= -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3;
+  // Gamma
+  r = r > 0.0031308 ? 1.055 * Math.pow(r, 1/2.4) - 0.055 : 12.92 * r;
+  g = g > 0.0031308 ? 1.055 * Math.pow(g, 1/2.4) - 0.055 : 12.92 * g;
+  bl= bl> 0.0031308 ? 1.055 * Math.pow(bl,1/2.4) - 0.055 : 12.92 * bl;
+  return [
+    Math.max(0, Math.min(255, Math.round(r * 255))),
+    Math.max(0, Math.min(255, Math.round(g * 255))),
+    Math.max(0, Math.min(255, Math.round(bl* 255))),
+  ];
+}
+
+function rgbStr(r, g, b, a = 1) {
+  return a < 1 ? `rgba(${r},${g},${b},${a.toFixed(3)})` : `rgb(${r},${g},${b})`;
+}
+
+// =========================================================================
+//  Simplex-ish noise  (fast 2D value noise for the blob boundary)
+// =========================================================================
+const _noiseP = new Uint8Array(512);
+(function initNoise() {
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) _noiseP[i] = p[i & 255];
+})();
+
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerp(a, b, t) { return a + t * (b - a); }
+function grad(hash, x, y) {
+  const h = hash & 3;
+  const u = h < 2 ? x : -x;
+  const v = h & 1 ? y : -y;
+  return u + v;
+}
+function noise2D(x, y) {
+  const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+  const xf = x - Math.floor(x), yf = y - Math.floor(y);
+  const u = fade(xf), v = fade(yf);
+  const aa = _noiseP[_noiseP[X] + Y], ab = _noiseP[_noiseP[X] + Y + 1];
+  const ba = _noiseP[_noiseP[X + 1] + Y], bb = _noiseP[_noiseP[X + 1] + Y + 1];
+  return lerp(lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u),
+              lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u), v);
+}
+
+// =========================================================================
+//  Spring physics  (critically damped / underdamped spring per property)
+// =========================================================================
+class Spring {
+  constructor(value, stiffness = 80, damping = 12) {
+    this.target = value;
+    this.value = value;
+    this.velocity = 0;
+    this.stiffness = stiffness;
+    this.damping = damping;
+  }
+  set(target) { this.target = target; }
+  step(dt) {
+    const force = -this.stiffness * (this.value - this.target);
+    const damp = -this.damping * this.velocity;
+    this.velocity += (force + damp) * dt;
+    this.value += this.velocity * dt;
+  }
+}
+
+// =========================================================================
+//  Particle system  (arousal > 0.6 → luminous emission)
+// =========================================================================
+class Particle {
+  constructor(x, y, r, g, b) {
+    this.x = x; this.y = y;
+    this.vx = (Math.random() - 0.5) * 30;
+    this.vy = -(20 + Math.random() * 40);
+    this.r = r; this.g = g; this.b = b;
+    this.life = 1.0;
+    this.decay = 0.5 + Math.random() * 0.6;
+    this.size = 2 + Math.random() * 2.5;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vy -= 8 * dt; // slight float-up deceleration
+    this.life -= this.decay * dt;
+  }
+  draw(ctx) {
+    if (this.life <= 0) return;
+    const a = this.life * 0.7;
+    const s = this.size * (0.5 + this.life * 0.5);
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, s);
+    grad.addColorStop(0, rgbStr(this.r, this.g, this.b, a));
+    grad.addColorStop(1, rgbStr(this.r, this.g, this.b, 0));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// =========================================================================
+//  OrbRenderer — the main lava-lamp blob
+// =========================================================================
+class OrbRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+
+    // Springs  (property → Spring)  — tuned per VISUALIZATION_SPEC.md §7
+    this.sp = {
+      hue:        new Spring(240, 80, 12),
+      lightness:  new Spring(0.58, 100, 14),
+      chroma:     new Spring(0.03, 100, 14),
+      radius:     new Spring(100, 150, 16),
+      flowSpeed:  new Spring(0.4, 60, 10),
+      distortAmp: new Spring(4, 80, 12),
+      glowIntensity: new Spring(0.15, 80, 12),
+      complexity: new Spring(0.1, 40, 8),
+    };
+
+    // Secondary color for multi-current (when complexity > 0.3)
+    this.sp2 = {
+      hue:       new Spring(240, 60, 10),
+      lightness: new Spring(0.5, 80, 12),
+      chroma:    new Spring(0.05, 80, 12),
+    };
+
+    this.particles = [];
+    this.particleTimer = 0;
+    this.time = 0;
+    this.N_POINTS = 72;       // blob boundary control points
+    this.dominantName = 'neutral';
+    this.secondaryName = '';
+
+    this.lastFrame = performance.now();
+    this._raf = requestAnimationFrame(t => this.loop(t));
+  }
+
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = this.canvas.parentElement.getBoundingClientRect();
+    this.W = rect.width;
+    this.H = rect.height;
+    this.canvas.width = this.W * dpr;
+    this.canvas.height = this.H * dpr;
+    this.canvas.style.width = this.W + 'px';
+    this.canvas.style.height = this.H + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.cx = this.W / 2;
+    this.cy = this.H / 2;
+  }
+
+  // ── Set emotion state from sliders or data ──
+  setEmotion({ valence, arousal, intensity, complexity, dominant, secondary,
+               dominantColor, secondaryColor }) {
+    // Map inputs to spring targets
+    const baseRadius = 60 + intensity * 100; // 60-160
+    this.sp.radius.set(baseRadius);
+    this.sp.flowSpeed.set(0.15 + (arousal + 1) / 2 * 1.4); // 0.15 - 1.55
+    this.sp.distortAmp.set(2 + (arousal + 1) / 2 * 18);      // 2 - 20
+    this.sp.glowIntensity.set(0.05 + intensity * 0.55);
+    this.sp.complexity.set(complexity);
+
+    // Primary color
+    if (dominantColor) {
+      this.sp.hue.set(dominantColor.H);
+      this.sp.lightness.set(dominantColor.L);
+      this.sp.chroma.set(dominantColor.C);
+    }
+    // Secondary color for multi-current
+    if (secondaryColor && complexity > 0.25) {
+      this.sp2.hue.set(secondaryColor.H);
+      this.sp2.lightness.set(secondaryColor.L);
+      this.sp2.chroma.set(secondaryColor.C);
+    }
+
+    this.dominantName = dominant || 'neutral';
+    this.secondaryName = secondary || '';
+  }
+
+  // ── Main loop ──
+  loop(now) {
+    const dt = Math.min((now - this.lastFrame) / 1000, 0.05); // cap at 50ms
+    this.lastFrame = now;
+    this.time += dt;
+
+    // Step all springs
+    for (const s of Object.values(this.sp)) s.step(dt);
+    for (const s of Object.values(this.sp2)) s.step(dt);
+
+    // Particles
+    this.updateParticles(dt);
+
+    // Draw
+    this.draw();
+
+    // Update info panel
+    this.updateInfo();
+
+    this._raf = requestAnimationFrame(t => this.loop(t));
+  }
+
+  updateParticles(dt) {
+    const arousal01 = (this.sp.flowSpeed.value - 0.15) / 1.4; // rough 0-1
+    // Particle emission rate: 0 below 0.6, ramps to ~15/s at 1.0
+    const rate = arousal01 > 0.55 ? (arousal01 - 0.55) / 0.45 * 18 : 0;
+    this.particleTimer += dt;
+    const interval = rate > 0 ? 1 / rate : 999;
+    while (this.particleTimer > interval && rate > 0) {
+      this.particleTimer -= interval;
+      const angle = Math.random() * Math.PI * 2;
+      const r = this.sp.radius.value * (0.85 + Math.random() * 0.2);
+      const px = this.cx + Math.cos(angle) * r;
+      const py = this.cy + Math.sin(angle) * r;
+      const [cr, cg, cb] = oklchToRgb(this.sp.lightness.value, this.sp.chroma.value, this.sp.hue.value);
+      this.particles.push(new Particle(px, py, cr, cg, cb));
+    }
+    for (const p of this.particles) p.update(dt);
+    this.particles = this.particles.filter(p => p.life > 0);
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    // Clear
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, this.W, this.H);
+
+    const R = this.sp.radius.value;
+    const flow = this.sp.flowSpeed.value;
+    const distort = this.sp.distortAmp.value;
+    const cplx = this.sp.complexity.value;
+    const glowI = this.sp.glowIntensity.value;
+
+    const [pr, pg, pb] = oklchToRgb(
+      this.sp.lightness.value, this.sp.chroma.value, this.sp.hue.value);
+
+    // ── Outer glow ──
+    const glowR = R * (1.5 + glowI * 1.5);
+    const glow = ctx.createRadialGradient(this.cx, this.cy, R * 0.3, this.cx, this.cy, glowR);
+    glow.addColorStop(0, rgbStr(pr, pg, pb, glowI * 0.35));
+    glow.addColorStop(0.5, rgbStr(pr, pg, pb, glowI * 0.12));
+    glow.addColorStop(1, rgbStr(pr, pg, pb, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(this.cx - glowR, this.cy - glowR, glowR * 2, glowR * 2);
+
+    // ── Blob boundary (noise-displaced radial points) ──
+    const points = [];
+    const t = this.time;
+    for (let i = 0; i < this.N_POINTS; i++) {
+      const theta = (i / this.N_POINTS) * Math.PI * 2;
+      const n1 = noise2D(theta * 1.5 + t * flow, t * flow * 0.3 + 10) * distort;
+      const n2 = noise2D(theta * 2.3 - t * flow * 0.7, t * flow * 0.5 + 50) * distort * 0.6;
+      const n3 = noise2D(theta * 3.7 + t * flow * 1.5, t * flow * 0.9 + 90) * distort * 0.4 * cplx;
+      const r = R + n1 + n2 + n3;
+      points.push({
+        x: this.cx + Math.cos(theta) * r,
+        y: this.cy + Math.sin(theta) * r,
+      });
+    }
+
+    // Smooth closed curve through points (Catmull-Rom → Bezier)
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i < this.N_POINTS; i++) {
+      const p0 = points[(i - 1 + this.N_POINTS) % this.N_POINTS];
+      const p1 = points[i];
+      const p2 = points[(i + 1) % this.N_POINTS];
+      const p3 = points[(i + 2) % this.N_POINTS];
+      if (i === 0) ctx.moveTo(p1.x, p1.y);
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+    ctx.closePath();
+
+    // ── Fill: radial gradient (core → edge luminous falloff) ──
+    const bodyGrad = ctx.createRadialGradient(
+      this.cx - R * 0.15, this.cy - R * 0.15, R * 0.05,
+      this.cx, this.cy, R * 1.1);
+
+    // Core is brighter
+    const coreL = Math.min(this.sp.lightness.value + 0.12, 0.95);
+    const [cr2, cg2, cb2] = oklchToRgb(coreL, this.sp.chroma.value * 1.1, this.sp.hue.value);
+    bodyGrad.addColorStop(0, rgbStr(cr2, cg2, cb2, 0.95));
+
+    // Multi-current: secondary color streaks when complexity > 0.3
+    if (cplx > 0.3) {
+      const blend = Math.min((cplx - 0.3) / 0.5, 0.6);
+      const [sr, sg, sb] = oklchToRgb(
+        this.sp2.lightness.value, this.sp2.chroma.value, this.sp2.hue.value);
+      const mixed = [
+        Math.round(pr * (1 - blend) + sr * blend),
+        Math.round(pg * (1 - blend) + sg * blend),
+        Math.round(pb * (1 - blend) + sb * blend),
+      ];
+      bodyGrad.addColorStop(0.4, rgbStr(mixed[0], mixed[1], mixed[2], 0.9));
+    }
+
+    bodyGrad.addColorStop(0.85, rgbStr(pr, pg, pb, 0.85));
+    bodyGrad.addColorStop(1, rgbStr(pr, pg, pb, 0.3));
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // ── Specular highlight (glass marble, upper-left) ──
+    const specX = this.cx - R * 0.28;
+    const specY = this.cy - R * 0.28;
+    const specR = R * 0.45;
+    const spec = ctx.createRadialGradient(specX, specY, 0, specX, specY, specR);
+    spec.addColorStop(0, `rgba(255,255,255,${0.12 + glowI * 0.15})`);
+    spec.addColorStop(0.5, `rgba(255,255,255,${0.03 + glowI * 0.05})`);
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
+    ctx.fill();
+
+    // ── Secondary color current overlay (when complexity > 0.3) ──
+    if (cplx > 0.3) {
+      const [sr, sg, sb] = oklchToRgb(
+        this.sp2.lightness.value, this.sp2.chroma.value, this.sp2.hue.value);
+      const blend = Math.min((cplx - 0.3) / 0.5, 0.5);
+      // Noise-driven offset for the secondary current
+      const offX = noise2D(t * flow * 0.4, 200) * R * 0.5;
+      const offY = noise2D(t * flow * 0.4 + 100, 200) * R * 0.5;
+      const secGrad = ctx.createRadialGradient(
+        this.cx + offX, this.cy + offY, 0,
+        this.cx + offX, this.cy + offY, R * 0.7);
+      secGrad.addColorStop(0, rgbStr(sr, sg, sb, blend * 0.5));
+      secGrad.addColorStop(0.6, rgbStr(sr, sg, sb, blend * 0.2));
+      secGrad.addColorStop(1, rgbStr(sr, sg, sb, 0));
+      ctx.fillStyle = secGrad;
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // ── Particles ──
+    for (const p of this.particles) p.draw(ctx);
+
+    // ── Dominant emotion label (Tier 2) ──
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '500 14px Inter, sans-serif';
+    ctx.fillStyle = rgbStr(pr, pg, pb, 0.7);
+    let label = this.dominantName;
+    if (this.secondaryName && cplx > 0.25) label += ' · ' + this.secondaryName;
+    ctx.fillText(label, this.cx, this.cy + R + 36);
+    ctx.restore();
+  }
+
+  updateInfo() {
+    const arousal01 = (this.sp.flowSpeed.value - 0.15) / 1.4;
+    const rate = arousal01 > 0.55 ? Math.round((arousal01 - 0.55) / 0.45 * 18) : 0;
+    document.getElementById('infoRadius').textContent = this.sp.radius.value.toFixed(0) + 'px';
+    document.getElementById('infoFlow').textContent = this.sp.flowSpeed.value.toFixed(2);
+    document.getElementById('infoParticles').textContent = rate + '/s (' + this.particles.length + ' live)';
+    document.getElementById('infoColor').textContent =
+      `L=${this.sp.lightness.value.toFixed(2)} C=${this.sp.chroma.value.toFixed(2)} H=${this.sp.hue.value.toFixed(0)}°`;
+    document.getElementById('infoDominant').textContent =
+      this.dominantName + (this.secondaryName ? ' · ' + this.secondaryName : '');
+  }
+}
+
+// =========================================================================
+//  Color blending (VISUALIZATION_SPEC.md §9 — circular hue interp)
+// =========================================================================
+function blendEmotionColors(scores) {
+  const active = Object.entries(scores)
+    .filter(([, s]) => s > 0.05)
+    .sort((a, b) => b[1] - a[1]);
+  if (!active.length) return { L: 0.58, C: 0.03, H: 240 };
+
+  const total = active.reduce((s, [, v]) => s + v, 0);
+  let L = 0, C = 0, hx = 0, hy = 0;
+  for (const [name, score] of active) {
+    const p = PALETTE[name] || PALETTE.calm;
+    const w = score / total;
+    L += p.L * w;
+    C += p.C * w;
+    hx += Math.cos(p.H * Math.PI / 180) * w;
+    hy += Math.sin(p.H * Math.PI / 180) * w;
+  }
+  const H = ((Math.atan2(hy, hx) * 180 / Math.PI) + 360) % 360;
+  return { L, C, H };
+}
+
+function computeComplexity(scores) {
+  const active = Object.values(scores).filter(s => s > 0.05);
+  if (active.length <= 1) return 0;
+  const total = active.reduce((s, v) => s + v, 0);
+  if (total === 0) return 0;
+  let entropy = 0;
+  for (const s of active) {
+    const p = s / total;
+    if (p > 0) entropy -= p * Math.log2(p);
+  }
+  const maxEntropy = Math.log2(active.length);
+  return maxEntropy > 0 ? entropy / maxEntropy : 0;
+}
+
+// =========================================================================
+//  UI wiring
+// =========================================================================
+const canvas = document.getElementById('orb');
+const orb = new OrbRenderer(canvas);
+
+// Emotion preset buttons
+const grid = document.getElementById('emotionGrid');
+const emotionNames = Object.keys(PALETTE);
+let activeEmotion = '';
+
+for (const name of emotionNames) {
+  const btn = document.createElement('button');
+  btn.className = 'emotion-btn';
+  btn.textContent = name;
+  btn.addEventListener('click', () => {
+    // Deactivate all
+    grid.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeEmotion = name;
+
+    // Set sliders from metadata
+    const m = META[name] || { v: 0, a: 0 };
+    document.getElementById('valence').value = Math.round(m.v * 100);
+    document.getElementById('arousal').value = Math.round(m.a * 100);
+    document.getElementById('intensity').value = 55;
+    document.getElementById('complexity').value = 10;
+    syncFromSliders();
+  });
+  grid.appendChild(btn);
+}
+
+function syncFromSliders() {
+  const valence = parseInt(document.getElementById('valence').value) / 100;
+  const arousal = parseInt(document.getElementById('arousal').value) / 100;
+  const intensity = parseInt(document.getElementById('intensity').value) / 100;
+  const complexity = parseInt(document.getElementById('complexity').value) / 100;
+
+  document.getElementById('valenceVal').textContent = valence.toFixed(2);
+  document.getElementById('arousalVal').textContent = arousal.toFixed(2);
+  document.getElementById('intensityVal').textContent = intensity.toFixed(2);
+  document.getElementById('complexityVal').textContent = complexity.toFixed(2);
+
+  // Build synthetic scores from the active emotion + slider state
+  let scores = {};
+  if (activeEmotion) {
+    scores[activeEmotion] = 0.8;
+    // If complexity is high, add secondary emotions with lower scores
+    if (complexity > 0.3) {
+      const others = emotionNames.filter(n => n !== activeEmotion);
+      const n2 = others[Math.floor(Math.random() * others.length / 3)]; // stable pick
+      const n3 = others[Math.floor(others.length / 2)];
+      scores[n2] = complexity * 0.5;
+      scores[n3] = complexity * 0.3;
+    }
+  } else {
+    // No preset: map valence/arousal to nearest emotion
+    let best = 'calm', bestD = 999;
+    for (const [n, m] of Object.entries(META)) {
+      const d = (m.v - valence) ** 2 + (m.a - arousal) ** 2;
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    scores[best] = 0.7;
+    activeEmotion = best;
+  }
+
+  const dominantColor = PALETTE[activeEmotion] || PALETTE.calm;
+
+  // Find secondary for multi-current
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const secondary = sorted.length > 1 ? sorted[1][0] : '';
+  const secondaryColor = secondary ? PALETTE[secondary] : null;
+
+  orb.setEmotion({
+    valence, arousal, intensity, complexity,
+    dominant: activeEmotion,
+    secondary,
+    dominantColor,
+    secondaryColor,
+  });
+}
+
+// Slider listeners
+for (const id of ['valence', 'arousal', 'intensity', 'complexity']) {
+  document.getElementById(id).addEventListener('input', syncFromSliders);
+}
+
+// Initial state
+syncFromSliders();
+
+// ── Palette preview strip ──
+(function drawPalette() {
+  const pc = document.getElementById('palettePreview');
+  const pctx = pc.getContext('2d');
+  // Sort emotions by valence
+  const sorted = Object.entries(META).sort((a, b) => a[1].v - b[1].v);
+  const w = pc.width / sorted.length;
+  for (let i = 0; i < sorted.length; i++) {
+    const [name] = sorted[i];
+    const p = PALETTE[name] || PALETTE.calm;
+    const [r, g, b] = oklchToRgb(p.L, p.C, p.H);
+    pctx.fillStyle = rgbStr(r, g, b);
+    pctx.fillRect(i * w, 0, w + 1, pc.height);
+  }
+})();
+</script>
+</body>
+</html>

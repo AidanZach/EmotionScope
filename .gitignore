@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# uv
+.uv/
+uv.lock
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local state
+.claude/
+
+# Model weights and caches
+*.bin
+*.safetensors
+*.gguf
+models/
+.cache/
+huggingface/
+
+# Results — ship finalized vectors and figures, ignore intermediate work
+results/metrics/*
+!results/metrics/.gitkeep
+
+# Vectors: ship the finalized ones, ignore scratch/intermediate
+results/vectors/speaker_separation*.pt
+!results/vectors/.gitkeep
+# NOTE: results/vectors/google_gemma-2-2b-it.pt IS tracked (shipped with repo)
+# NOTE: results/figures/ IS tracked (shipped with repo)
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
+wandb/
